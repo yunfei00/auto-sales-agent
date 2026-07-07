@@ -15,13 +15,38 @@ def _money(value: Decimal | None) -> str:
     return f"{value.quantize(Decimal('0.01'))}"
 
 
+def _normalize_budget_value(value: str, unit: str | None = None) -> Decimal:
+    amount = Decimal(value)
+    normalized_unit = (unit or "").lower()
+    if normalized_unit in {"w", "\u4e07"}:
+        return amount * TEN_THOUSAND
+    if normalized_unit == "k":
+        return amount * Decimal("1000")
+    if amount < Decimal("1000"):
+        return amount * TEN_THOUSAND
+    return amount
+
+
 def _extract_budget(message: str) -> tuple[Decimal | None, Decimal | None]:
-    numbers = [Decimal(match) for match in re.findall(r"\d+(?:\.\d+)?", message)]
+    normalized = message.lower().replace(",", "")
+    range_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*(w|k|\u4e07)?(?![a-z])\s*(?:-|~|\u5230|\u81f3|to)\s*(\d+(?:\.\d+)?)\s*(w|k|\u4e07)?(?![a-z])",
+        normalized,
+    )
+    if range_match:
+        low_value, low_unit, high_value, high_unit = range_match.groups()
+        shared_unit = high_unit if high_unit and not low_unit else None
+        low = _normalize_budget_value(low_value, low_unit or shared_unit)
+        high = _normalize_budget_value(high_value, high_unit)
+        if low > high:
+            low, high = high, low
+        return low, high
+
+    numbers = [Decimal(match) for match in re.findall(r"\d+(?:\.\d+)?", normalized)]
     if not numbers:
         return None, None
-    primary = numbers[0]
-    if primary < Decimal("1000"):
-        primary *= TEN_THOUSAND
+    unit_match = re.search(r"\d+(?:\.\d+)?\s*(w|k|\u4e07)", normalized)
+    primary = _normalize_budget_value(str(numbers[0]), unit_match.group(1) if unit_match else None)
     return primary * Decimal("0.9"), primary * Decimal("1.1")
 
 
