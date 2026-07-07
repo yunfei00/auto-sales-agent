@@ -23,6 +23,7 @@ import {
   type CurrentUser,
   type Customer,
   type CustomerTask,
+  type DashboardSummary,
   type FollowupScriptResult,
   type Interaction,
   type Lead,
@@ -39,6 +40,7 @@ import {
   emptyFollowup,
   emptyRecommendation,
   getCustomer,
+  getDashboardSummary,
   getSession,
   listCustomerInteractions,
   listCustomerQuotes,
@@ -202,6 +204,7 @@ function App() {
 
   const [leads, setLeads] = useState<Lead[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [tasks, setTasks] = useState<CustomerTask[]>([])
@@ -252,9 +255,10 @@ function App() {
   async function loadDesk() {
     setApiState('loading')
     setStatusText('正在加载销售流程')
-    const [leadList, customerList] = await Promise.all([listLeads(), listCustomers()])
+    const [leadList, customerList, summary] = await Promise.all([listLeads(), listCustomers(), getDashboardSummary()])
     setLeads(leadList)
     setCustomers(customerList)
+    setDashboardSummary(summary)
     const firstLead = leadList[0] || null
     const fallbackCustomer = customerList[0] || null
     await chooseLead(firstLead, fallbackCustomer)
@@ -374,7 +378,8 @@ function App() {
   }
 
   async function reloadCustomer(customerId: number) {
-    const customer = await getCustomer(customerId)
+    const [customer, summary] = await Promise.all([getCustomer(customerId), getDashboardSummary()])
+    setDashboardSummary(summary)
     setSelectedCustomer(customer)
     await loadCustomerAssets(customer)
     return customer
@@ -446,10 +451,30 @@ function App() {
   }
 
   const metrics = [
-    { label: '重点线索', value: String(leads.length), trend: `${leads.filter((lead) => lead.score >= 80).length} 条高意向`, tone: 'blue' },
-    { label: '待办任务', value: String(openTasks.length), trend: `共 ${tasks.length} 条`, tone: 'green' },
-    { label: '报价草案', value: String(quotes.length), trend: latestQuote ? money(latestQuote.landing_price) : '-', tone: 'amber' },
-    { label: '客户档案', value: String(customers.length), trend: selectedCustomer?.stage ? labelText(selectedCustomer.stage) : '-', tone: 'slate' },
+    {
+      label: '今日线索',
+      value: String(dashboardSummary?.leads.today ?? leads.length),
+      trend: `${dashboardSummary?.leads.high_intent ?? leads.filter((lead) => lead.score >= 80).length} 条高意向`,
+      tone: 'blue',
+    },
+    {
+      label: '待办任务',
+      value: String(dashboardSummary?.tasks.open ?? openTasks.length),
+      trend: `${dashboardSummary?.tasks.overdue ?? 0} 条逾期`,
+      tone: 'green',
+    },
+    {
+      label: '试驾预约',
+      value: String(dashboardSummary?.sales.test_drives_booked ?? testDrives.length),
+      trend: `今日 ${dashboardSummary?.sales.test_drives_today ?? 0} 场`,
+      tone: 'amber',
+    },
+    {
+      label: '报价管道',
+      value: String(dashboardSummary?.sales.quotes ?? quotes.length),
+      trend: money(dashboardSummary?.sales.quote_pipeline || latestQuote?.landing_price),
+      tone: 'slate',
+    },
   ]
 
   if (loadState !== 'authenticated') {

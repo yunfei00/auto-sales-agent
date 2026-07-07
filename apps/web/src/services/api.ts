@@ -204,6 +204,38 @@ export type QuoteSuggestionResult = {
   explanation: string
 }
 
+export type DashboardSummary = {
+  updated_at: string
+  leads: {
+    total: number
+    today: number
+    high_intent: number
+    converted: number
+  }
+  customers: {
+    total: number
+    quoted: number
+    test_drive_booked: number
+  }
+  tasks: {
+    open: number
+    overdue: number
+  }
+  sales: {
+    quotes: number
+    quote_pipeline: string
+    test_drives_today: number
+    test_drives_booked: number
+    orders: number
+    delivered_orders: number
+  }
+  inventory: {
+    available: number
+    in_transit: number
+    reserved: number
+  }
+}
+
 type Paginated<T> = {
   count: number
   next: string | null
@@ -294,6 +326,10 @@ export function logout() {
 
 export function listLeads() {
   return getCollection<Lead>('/api/leads/?ordering=-score')
+}
+
+export function getDashboardSummary() {
+  return requestJson<DashboardSummary>('/api/dashboard/summary/')
 }
 
 export function listCustomers() {

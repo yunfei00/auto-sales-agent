@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.vehicles",
     "apps.sales",
     "apps.ai_gateway",
+    "apps.dashboard",
     "apps.audit",
 ]
 
