@@ -57,6 +57,16 @@ Each tag directory should include:
 - Database migration instructions.
 - Rollback notes.
 
+The current deployable shape is a single Django container:
+
+- Docker build compiles `apps/web` with Vite.
+- The built frontend is copied into `/app/frontend_dist`.
+- Django serves the SPA at `/`.
+- Django serves API routes under `/api/`.
+- Django admin remains under `/admin/`.
+- Static assets are served through WhiteNoise under `/static/`.
+- The container listens on internal port `7860`.
+
 ## Future Deployment Checklist
 
 1. Build frontend and backend artifacts.
@@ -69,15 +79,18 @@ Each tag directory should include:
 8. Run Django migrations and collect static assets if using Django.
 9. Verify `http://111.228.9.40:58900/`.
 10. Verify admin access at `http://111.228.9.40:58900/admin/`.
+11. Verify health check at `http://111.228.9.40:58900/api/health/`.
 
 ## Django Deployment Notes
 
 For the Django backend, the production container should:
 
 - Serve API and admin on port `7860`.
+- Serve the React workbench at `/`.
 - Use PostgreSQL for persistent data.
 - Use Redis for Celery and cache.
 - Run `python manage.py migrate` before switching traffic.
+- Run `python manage.py ensure_admin` with credentials from environment variables.
+- Run `python manage.py seed_demo` for the first demo deployment.
 - Run `python manage.py collectstatic --noinput` if static files are served by the app container or Nginx.
 - Keep admin credentials in environment variables or a secure secret store, not in git.
-

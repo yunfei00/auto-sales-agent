@@ -60,7 +60,7 @@ export type QuoteSuggestionResult = {
   explanation: string
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7860'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

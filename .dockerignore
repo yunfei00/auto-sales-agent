@@ -9,4 +9,9 @@ refer_to/
 **/db.sqlite3
 **/media/
 **/staticfiles/
+apps/web/dist/
+apps/api/.env
+apps/api/.env.*
 node_modules/
+apps/web/node_modules/
+*.log
