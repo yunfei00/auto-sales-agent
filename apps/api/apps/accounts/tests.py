@@ -3,6 +3,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from apps.accounts.models import UserProfile
+from apps.accounts.views import CAPTCHA_SESSION_KEY
 
 
 class SessionApiTests(TestCase):
@@ -14,6 +15,15 @@ class SessionApiTests(TestCase):
         )
         UserProfile.objects.create(user=self.user, role=UserProfile.Role.SALES_CONSULTANT)
 
+    def captcha_answer(self, client=None):
+        client = client or self.client
+        response = client.get(reverse("account-captcha"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["captcha_image"].startswith("data:image/svg+xml;base64,"))
+        self.assertTrue(payload["csrf_token"])
+        return client.session[CAPTCHA_SESSION_KEY]
+
     def test_session_starts_anonymous(self):
         response = self.client.get(reverse("current-session"))
 
@@ -22,9 +32,10 @@ class SessionApiTests(TestCase):
         self.assertTrue(response.json()["csrf_token"])
 
     def test_login_and_logout(self):
+        captcha = self.captcha_answer()
         response = self.client.post(
             reverse("account-login"),
-            {"username": "consultant", "password": "Passw0rd!234"},
+            {"username": "consultant", "password": "Passw0rd!234", "captcha": captcha},
             content_type="application/json",
         )
 
@@ -40,7 +51,8 @@ class SessionApiTests(TestCase):
 
     def test_login_requires_csrf_when_csrf_checks_are_enforced(self):
         secure_client = Client(enforce_csrf_checks=True)
-        login_payload = {"username": "consultant", "password": "Passw0rd!234"}
+        captcha = self.captcha_answer(secure_client)
+        login_payload = {"username": "consultant", "password": "Passw0rd!234", "captcha": captcha}
 
         response = secure_client.post(
             reverse("account-login"),
@@ -67,6 +79,18 @@ class SessionApiTests(TestCase):
             HTTP_X_CSRFTOKEN=csrf_token,
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_login_rejects_invalid_captcha(self):
+        self.captcha_answer()
+
+        response = self.client.post(
+            reverse("account-login"),
+            {"username": "consultant", "password": "Passw0rd!234", "captcha": "bad"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("captcha", response.json())
 
     def test_anonymous_business_api_read_is_denied(self):
         response = self.client.get("/api/leads/")

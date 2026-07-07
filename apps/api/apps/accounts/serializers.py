@@ -38,3 +38,4 @@ class CurrentUserSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(trim_whitespace=False, write_only=True)
+    captcha = serializers.CharField(max_length=8, trim_whitespace=True, write_only=True)

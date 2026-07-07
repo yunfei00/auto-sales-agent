@@ -51,6 +51,7 @@ import {
   createTestDrive,
   emptyFollowup,
   emptyRecommendation,
+  fetchLoginCaptcha,
   getCustomer,
   getDashboardSummary,
   getSession,
@@ -230,6 +231,8 @@ function App() {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
+  const [captcha, setCaptcha] = useState('')
+  const [captchaImage, setCaptchaImage] = useState('')
   const [loginError, setLoginError] = useState('')
   const [activeView, setActiveView] = useState<ActiveView>('desk')
 
@@ -278,6 +281,16 @@ function App() {
     void bootstrap()
   }, [])
 
+  async function refreshCaptcha() {
+    try {
+      const payload = await fetchLoginCaptcha()
+      setCaptchaImage(payload.captcha_image)
+      setCaptcha('')
+    } catch {
+      setCaptchaImage('')
+    }
+  }
+
   async function bootstrap() {
     setLoadState('checking')
     setApiState('loading')
@@ -287,6 +300,7 @@ function App() {
         setLoadState('anonymous')
         setApiState('ready')
         setStatusText('请先登录')
+        await refreshCaptcha()
         return
       }
       setUser(session.user)
@@ -296,6 +310,7 @@ function App() {
       setLoadState('anonymous')
       setApiState('error')
       setStatusText('服务暂不可用')
+      await refreshCaptcha()
     }
   }
 
@@ -410,13 +425,14 @@ function App() {
     setLoginError('')
     setApiState('loading')
     try {
-      const session = await login(username, password)
+      const session = await login(username, password, captcha)
       setUser(session.user)
       setLoadState('authenticated')
       await loadDesk()
     } catch {
-      setApiState('error')
-      setLoginError('用户名或密码错误')
+      setApiState('ready')
+      setLoginError('用户名、密码或验证码错误')
+      await refreshCaptcha()
     }
   }
 
@@ -424,8 +440,10 @@ function App() {
     await logout()
     setUser(null)
     setPassword('')
+    setCaptcha('')
     setLoadState('anonymous')
     setStatusText('已退出登录')
+    await refreshCaptcha()
   }
 
   async function runRecommendation() {
@@ -671,8 +689,24 @@ function App() {
               autoComplete="current-password"
             />
           </label>
+          <label className="captcha-field">
+            验证码
+            <div className="captcha-row">
+              <input
+                value={captcha}
+                onChange={(event) => setCaptcha(event.target.value.toUpperCase())}
+                autoComplete="off"
+                inputMode="text"
+                maxLength={8}
+                placeholder="输入验证码"
+              />
+              <button className="captcha-image-button" type="button" title="换一张验证码" onClick={() => void refreshCaptcha()}>
+                {captchaImage ? <img src={captchaImage} alt="验证码" /> : <RefreshCw size={18} />}
+              </button>
+            </div>
+          </label>
           {loginError && <div className="form-error">{loginError}</div>}
-          <button type="submit" disabled={apiState === 'loading'}>
+          <button type="submit" disabled={apiState === 'loading' || !captchaImage}>
             {apiState === 'loading' ? <RefreshCw size={18} className="spin" /> : <Send size={18} />}
             登录
           </button>

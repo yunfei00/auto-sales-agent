@@ -25,6 +25,12 @@ export type SessionPayload = {
   csrf_token?: string
 }
 
+export type CaptchaPayload = {
+  captcha_image: string
+  length: number
+  csrf_token?: string
+}
+
 export type DemandProfile = {
   id: number
   budget_min: string | null
@@ -363,8 +369,15 @@ export function getSession() {
   })
 }
 
-export function login(username: string, password: string) {
-  return postJson<SessionPayload>('/api/accounts/login/', { username, password }).then((payload) => {
+export function fetchLoginCaptcha() {
+  return requestJson<CaptchaPayload>('/api/accounts/captcha/').then((payload) => {
+    sessionCsrfToken = payload.csrf_token || sessionCsrfToken
+    return payload
+  })
+}
+
+export function login(username: string, password: string, captcha: string) {
+  return postJson<SessionPayload>('/api/accounts/login/', { username, password, captcha }).then((payload) => {
     sessionCsrfToken = payload.csrf_token || sessionCsrfToken
     return payload
   })
