@@ -199,6 +199,17 @@ function localizeText(value?: string | null) {
   return textLabels[value] || value
 }
 
+function cleanDisplayText(value?: string | null) {
+  const text = (value || '').trim()
+  if (!text || /^[?？]+$/.test(text)) return ''
+  return text
+}
+
+function leadDisplayName(lead?: Lead | null) {
+  if (!lead) return ''
+  return cleanDisplayText(lead.name) || cleanDisplayText(lead.phone) || '\u672a\u547d\u540d\u7ebf\u7d22'
+}
+
 function buildDemandMessage(customer: Customer | null, lead: Lead | null) {
   const demand = customer?.demand_profile
   const parts = [
@@ -762,7 +773,7 @@ function App() {
                 onClick={() => void chooseLead(lead)}
               >
                 <div>
-                  <strong>{lead.name || lead.phone}</strong>
+                  <strong>{leadDisplayName(lead)}</strong>
                   <span>{lead.intent_model || '待确认意向'}</span>
                 </div>
                 <div>
@@ -781,7 +792,9 @@ function App() {
                 <UserRound size={24} />
               </div>
               <div>
-                <h2>{labelText(selectedCustomer?.name || selectedLead?.name || '未选择客户')}</h2>
+                <h2>
+                  {labelText(cleanDisplayText(selectedCustomer?.name) || leadDisplayName(selectedLead) || '\u672a\u9009\u62e9\u5ba2\u6237')}
+                </h2>
                 <p>
                   {selectedCustomer?.phone || selectedLead?.phone || '-'} · {labelText(selectedCustomer?.city || selectedLead?.city || '-')}
                 </p>
@@ -1159,7 +1172,7 @@ function App() {
                 {leads.slice(0, 8).map((lead) => (
                   <article className="timeline-row" key={lead.id}>
                     <div>
-                      <strong>{lead.name || lead.phone}</strong>
+                      <strong>{leadDisplayName(lead)}</strong>
                       <span>
                         {lead.intent_model || '意向待确认'} · {labelText(lead.status)} · {lead.score}
                       </span>
