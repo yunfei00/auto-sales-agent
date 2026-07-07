@@ -54,15 +54,22 @@ def _demand_from_message(message: str) -> dict[str, Any]:
     lower = message.lower()
     budget_min, budget_max = _extract_budget(message)
     energy_type = ""
-    if "bev" in lower or "ev" in lower or "electric" in lower or "\u65b0\u80fd\u6e90" in lower:
+    if (
+        "bev" in lower
+        or "ev" in lower
+        or "electric" in lower
+        or "\u7eaf\u7535" in lower
+        or "\u65b0\u80fd\u6e90" in lower
+    ):
         energy_type = "bev"
     body_type = "SUV" if "suv" in lower else ""
+    usage_scenario = "家庭用车" if "family" in lower or "\u5bb6\u5ead" in lower or "\u5bb6\u7528" in lower else ""
     return {
         "budget_min": budget_min,
         "budget_max": budget_max,
         "energy_type": energy_type,
         "body_type": body_type,
-        "usage_scenario": "family use" if "family" in lower else "",
+        "usage_scenario": usage_scenario,
         "key_concerns": [],
     }
 
@@ -98,30 +105,30 @@ def _score_inventory(vehicle: VehicleInventory, demand: dict[str, Any]) -> tuple
     if price and budget_min and budget_max:
         if budget_min <= price <= budget_max:
             score += 25
-            reasons.append("Price fits the stated budget range.")
+            reasons.append("价格落在客户预算区间内。")
         elif price <= budget_max * Decimal("1.08"):
             score += 10
-            reasons.append("Slightly above budget, but can be discussed with policy support.")
+            reasons.append("价格略高于预算，但可结合优惠政策继续沟通。")
         else:
-            risks.append("Price may exceed the customer budget.")
+            risks.append("价格可能超出客户预算。")
 
     body_type = (demand.get("body_type") or "").lower()
     if body_type and model.body_type.lower() == body_type:
         score += 15
-        reasons.append(f"Body type matches: {model.body_type}.")
+        reasons.append(f"车身类型匹配：{model.body_type}。")
 
     energy_type = demand.get("energy_type")
     if energy_type and model.energy_type == energy_type:
         score += 15
-        reasons.append("Energy type matches the customer preference.")
+        reasons.append("能源类型符合客户偏好。")
 
     if vehicle.status == VehicleInventory.Status.AVAILABLE:
         score += 8
-        reasons.append("In stock and available for delivery.")
+        reasons.append("当前有现车，可推进到店试驾或交付确认。")
     elif vehicle.status == VehicleInventory.Status.IN_TRANSIT:
-        risks.append("Vehicle is in transit, delivery date needs confirmation.")
+        risks.append("车辆在途，需要确认预计到店时间。")
     else:
-        risks.append(f"Inventory status is {vehicle.status}.")
+        risks.append(f"库存状态为 {vehicle.status}，需要销售确认。")
 
     policy = (
         SalesPolicy.objects.filter(store=vehicle.store, model=model, is_active=True)
@@ -130,7 +137,7 @@ def _score_inventory(vehicle: VehicleInventory, demand: dict[str, Any]) -> tuple
     )
     if policy:
         score += 7
-        reasons.append(f"Active policy available: {policy.title}.")
+        reasons.append(f"可叠加当前销售政策：{policy.title}。")
 
     return min(score, 100), reasons[:5], risks[:3]
 
@@ -191,7 +198,7 @@ def recommend_vehicles(
                 "exterior_color": vehicle.exterior_color,
                 "range_km": trim.range_km,
                 "match_score": score,
-                "reasons": reasons or ["Good overall fit based on current inventory."],
+                "reasons": reasons or ["基于当前库存和客户需求，整体匹配度较高。"],
                 "risks": risks,
                 "policy": {
                     "title": policy.title if policy else "",
@@ -203,15 +210,15 @@ def recommend_vehicles(
 
     return {
         "type": "vehicle_recommendation",
-        "summary": f"Found {len(cards)} recommended vehicles based on demand and inventory.",
+        "summary": f"已根据客户需求和库存匹配出 {len(cards)} 款推荐车型。",
         "demand": {
             key: _money(value) if isinstance(value, Decimal) else value
             for key, value in demand.items()
         },
         "cards": cards,
         "next_best_actions": [
-            {"action": "book_test_drive", "label": "Book a test drive", "priority": "high"},
-            {"action": "generate_quote", "label": "Generate quote draft", "priority": "high"},
+            {"action": "book_test_drive", "label": "预约试驾", "priority": "high"},
+            {"action": "generate_quote", "label": "生成报价草案", "priority": "high"},
         ],
     }
 
@@ -219,25 +226,25 @@ def recommend_vehicles(
 def generate_followup_script(*, customer_id: int | None = None, scenario: str = "first_contact") -> dict[str, Any]:
     customer = Customer.objects.filter(id=customer_id).select_related("demand_profile").first() if customer_id else None
     profile = getattr(customer, "demand_profile", None)
-    name = customer.name if customer else "there"
+    name = customer.name if customer else "客户"
     model_hint = ""
     if profile and profile.preferred_models:
         model_hint = profile.preferred_models[0]
 
     if scenario == "test_drive":
         script = (
-            f"Hi {name}, the {model_hint or 'recommended model'} is available for a weekend test drive. "
-            "I can reserve a slot and prepare a finance plan before you arrive."
+            f"{name}您好，{model_hint or '推荐车型'} 目前可以安排试驾。"
+            "我可以先为您预留合适时段，并提前准备金融方案，方便您到店后直接对比。"
         )
     elif scenario == "price_objection":
         script = (
-            f"Hi {name}, I understand price is important. I can compare the cash discount, finance plan, "
-            "and trade-in support so you can see the real landing cost clearly."
+            f"{name}您好，我理解您比较关注价格。"
+            "我可以把现金优惠、金融方案和置换支持放在一起算清楚，让您直观看到真实落地成本。"
         )
     else:
         script = (
-            f"Hi {name}, based on your budget and usage needs, I found a few suitable vehicles in stock. "
-            "Would you like me to send a short comparison and arrange a test drive?"
+            f"{name}您好，根据您的预算和用车需求，我筛选了几款当前库存里比较合适的车型。"
+            "我可以先发您一份简短对比，再帮您安排试驾时间。"
         )
 
     return {
@@ -245,11 +252,11 @@ def generate_followup_script(*, customer_id: int | None = None, scenario: str = 
         "scenario": scenario,
         "script": script,
         "talking_points": [
-            "Confirm budget and purchase timeline.",
-            "Invite test drive with a specific time slot.",
-            "Offer quote comparison with finance and trade-in options.",
+            "确认预算区间和购车周期。",
+            "给出明确试驾时间段，推动预约。",
+            "结合金融、保险和置换方案做落地价对比。",
         ],
-        "next_best_action": {"action": "book_test_drive", "label": "Book test drive"},
+        "next_best_action": {"action": "book_test_drive", "label": "预约试驾"},
     }
 
 
@@ -282,5 +289,5 @@ def suggest_quote(*, inventory_id: int, customer_id: int | None = None) -> dict[
         "landing_price": _money(landing_price),
         "finance_down_payment": _money(down_payment),
         "finance_monthly_payment": _money(monthly_payment),
-        "explanation": "Draft only. Final price, finance approval and insurance quote must be confirmed by the store.",
+        "explanation": "该报价为草案，最终成交价、金融审批和保险报价需由门店确认。",
     }

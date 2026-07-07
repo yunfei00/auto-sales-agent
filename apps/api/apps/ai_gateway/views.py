@@ -73,11 +73,11 @@ def chat(request):
     else:
         response_payload = {
             "type": "assistant_message",
-            "summary": "AI Gateway is wired. Use recommendation, follow-up, or quote endpoints for structured actions.",
+            "summary": "AI 网关已连接。可以使用车型推荐、跟进话术或报价草案能力。",
             "echo": message,
             "next_actions": [
-                {"action": "vehicle_recommendation", "label": "Generate vehicle recommendations"},
-                {"action": "followup_script", "label": "Generate follow-up script"},
+                {"action": "vehicle_recommendation", "label": "生成车型推荐"},
+                {"action": "followup_script", "label": "生成跟进话术"},
             ],
         }
     assistant = AIMessage.objects.create(

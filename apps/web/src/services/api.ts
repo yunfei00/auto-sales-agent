@@ -375,7 +375,7 @@ export function requestQuoteSuggestion(inventoryId: number, customerId?: number 
 
 export const emptyRecommendation: VehicleRecommendationResult = {
   type: 'vehicle_recommendation',
-  summary: 'No recommendation has been generated yet.',
+  summary: '尚未生成车型推荐。',
   demand: {},
   cards: [],
   next_best_actions: [],
@@ -384,7 +384,7 @@ export const emptyRecommendation: VehicleRecommendationResult = {
 export const emptyFollowup: FollowupScriptResult = {
   type: 'followup_script',
   scenario: 'test_drive',
-  script: 'Select a customer and generate a follow-up script.',
+  script: '请选择客户并生成跟进话术。',
   talking_points: [],
-  next_best_action: { action: 'book_test_drive', label: 'Book test drive' },
+  next_best_action: { action: 'book_test_drive', label: '预约试驾' },
 }

@@ -59,7 +59,7 @@ function money(value?: string | null) {
   if (!value) return '-'
   const parsed = Number(value)
   if (Number.isNaN(parsed)) return value
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency: 'CNY',
     maximumFractionDigits: 0,
@@ -68,35 +68,128 @@ function money(value?: string | null) {
 
 function dateTime(value?: string | null) {
   if (!value) return '-'
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
 }
 
-function stageLabel(value?: string) {
-  return (value || '').replaceAll('_', ' ') || '-'
+const textLabels: Record<string, string> = {
+  admin: '管理员',
+  store_manager: '门店经理',
+  sales_manager: '销售经理',
+  sales_consultant: '销售顾问',
+  finance_insurance: '金融保险',
+  operations: '运营',
+  user: '用户',
+  new: '新线索',
+  qualified: '已意向确认',
+  duplicate: '重复线索',
+  invalid: '无效线索',
+  converted: '已转化',
+  new_lead: '新客户',
+  contacted: '已联系',
+  invited: '已邀约',
+  test_drive_booked: '已预约试驾',
+  test_driven: '已试驾',
+  quoted: '已报价',
+  deposit_paid: '已付定金',
+  contract_signed: '已签约',
+  delivered: '已交付',
+  lost: '已流失',
+  open: '待处理',
+  done: '已完成',
+  cancelled: '已取消',
+  draft: '草稿',
+  booked: '已预约',
+  arrived: '已到店',
+  completed: '已完成',
+  pending_approval: '待审批',
+  approved: '已审批',
+  sent: '已发送',
+  accepted: '已接受',
+  rejected: '已拒绝',
+  available: '现车可售',
+  reserved: '已预留',
+  sold: '已售出',
+  in_transit: '在途',
+  test_drive: '试驾车',
+  wechat: '微信',
+  phone: '电话',
+  store_visit: '到店',
+  website: '网站',
+  other: '其他',
+  bev: '纯电',
+  phev: '插混',
+  hev: '混动',
+  erev: '增程',
+  ice: '燃油',
+  'Demo Auto Group': '演示汽车集团',
+  'Demo Customer': '演示客户',
+  'Mia Chen': '陈米娅',
+  'Leo Wang': '王立欧',
+  'Ivy Liu': '刘艾薇',
+  'Shanghai Main Store': '上海主门店',
+  Shanghai: '上海',
+  'Sales Demo': '演示销售',
+  Website: '官网',
+  Livestream: '直播',
+  'Pearl White': '珍珠白',
+  'Graphite Gray': '石墨灰',
+  'Deep Blue': '深海蓝',
+  'Mint Green': '薄荷绿',
+  Black: '黑色',
+  'Invite weekend test drive': '邀约周末试驾',
+  '邀约周末试驾': '邀约周末试驾',
+  'Qualify demand': '确认购车需求',
+  'Follow up customer': '跟进客户',
+  'family commute and weekend trips': '家庭通勤与周末出行',
+  'within 2 weeks': '两周内',
+  'this month': '本月',
+  finance: '金融分期',
+  price: '价格',
+  range: '续航',
+  delivery_time: '交付时间',
+  high_intent: '高意向',
+  family_use: '家庭用车',
+  ev: '新能源',
+  valid_lead: '有效线索',
+  demo: '演示数据',
+  'High-intent family buyer with EV SUV preference and price sensitivity.': '高意向家庭用户，偏好新能源 SUV，对价格和成交政策较敏感。',
+  'Asked about EV SUV range, weekend test drive and finance plan.': '咨询新能源 SUV 续航、周末试驾和金融方案。',
+  'Focus on range confidence and monthly payment.': '重点跟进续航信心和月供方案。',
+  'Draft quote based on demo cash discount and finance intent.': '基于演示现金优惠和金融意向生成的报价草案。',
+}
+
+function labelText(value?: string | null) {
+  if (!value) return '-'
+  return textLabels[value] || textLabels[value.toLowerCase()] || value.replaceAll('_', ' ')
+}
+
+function localizeText(value?: string | null) {
+  if (!value) return ''
+  return textLabels[value] || value
 }
 
 function buildDemandMessage(customer: Customer | null, lead: Lead | null) {
   const demand = customer?.demand_profile
   const parts = [
-    demand?.budget_min && demand?.budget_max ? `budget ${demand.budget_min} to ${demand.budget_max}` : '',
-    demand?.energy_type || '',
+    demand?.budget_min && demand?.budget_max ? `预算 ${demand.budget_min} 到 ${demand.budget_max}` : '',
+    demand?.energy_type ? labelText(demand.energy_type) : '',
     demand?.body_type || '',
-    demand?.usage_scenario || '',
-    lead?.intent_model ? `interested in ${lead.intent_model}` : '',
-    lead?.purchase_timeline ? `timeline ${lead.purchase_timeline}` : '',
+    demand?.usage_scenario ? localizeText(demand.usage_scenario) : '',
+    lead?.intent_model ? `意向车型 ${lead.intent_model}` : '',
+    lead?.purchase_timeline ? `购车周期 ${labelText(lead.purchase_timeline)}` : '',
   ].filter(Boolean)
-  return parts.join(', ') || 'budget 200000 to 320000, EV SUV, family weekend trips'
+  return parts.join('，') || '预算 200000 到 320000，新能源 SUV，家庭周末出行'
 }
 
 function App() {
   const [loadState, setLoadState] = useState<LoadState>('checking')
   const [apiState, setApiState] = useState<ApiState>('loading')
-  const [statusText, setStatusText] = useState('Checking session')
+  const [statusText, setStatusText] = useState('正在检查登录状态')
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
@@ -138,7 +231,7 @@ function App() {
       if (!session.authenticated || !session.user) {
         setLoadState('anonymous')
         setApiState('ready')
-        setStatusText('Sign in required')
+        setStatusText('请先登录')
         return
       }
       setUser(session.user)
@@ -147,13 +240,13 @@ function App() {
     } catch {
       setLoadState('anonymous')
       setApiState('error')
-      setStatusText('API unavailable')
+      setStatusText('服务暂不可用')
     }
   }
 
   async function loadDesk() {
     setApiState('loading')
-    setStatusText('Loading sales workflow')
+    setStatusText('正在加载销售流程')
     const [leadList, customerList] = await Promise.all([listLeads(), listCustomers()])
     setLeads(leadList)
     setCustomers(customerList)
@@ -161,7 +254,7 @@ function App() {
     const fallbackCustomer = customerList[0] || null
     await chooseLead(firstLead, fallbackCustomer)
     setApiState('ready')
-    setStatusText('Connected to Django')
+    setStatusText('已连接后端服务')
   }
 
   async function resolveCustomer(lead: Lead | null, fallbackCustomer: Customer | null) {
@@ -228,7 +321,7 @@ function App() {
     await loadCustomerAssets(customer)
     await refreshAi(customer, lead)
     setApiState('ready')
-    setStatusText(customer ? `Viewing ${customer.name}` : 'Lead selected')
+    setStatusText(customer ? `正在查看 ${labelText(customer.name)}` : '已选择线索')
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -242,7 +335,7 @@ function App() {
       await loadDesk()
     } catch {
       setApiState('error')
-      setLoginError('Invalid username or password')
+      setLoginError('用户名或密码错误')
     }
   }
 
@@ -251,7 +344,7 @@ function App() {
     setUser(null)
     setPassword('')
     setLoadState('anonymous')
-    setStatusText('Signed out')
+    setStatusText('已退出登录')
   }
 
   async function runRecommendation() {
@@ -263,10 +356,10 @@ function App() {
       setSelectedCard(first)
       setQuoteDraft(first ? await requestQuoteSuggestion(first.inventory_id, selectedCustomer?.id) : null)
       setApiState('ready')
-      setStatusText('Recommendation refreshed')
+      setStatusText('推荐已刷新')
     } catch {
       setApiState('error')
-      setStatusText('Recommendation failed')
+      setStatusText('推荐生成失败')
     }
   }
 
@@ -277,7 +370,7 @@ function App() {
 
   async function addFollowupTask() {
     if (!selectedCustomer) return
-    const task = await createCustomerTask(selectedCustomer.id, selectedCustomer.next_action || 'Follow up customer')
+    const task = await createCustomerTask(selectedCustomer.id, localizeText(selectedCustomer.next_action) || '跟进客户')
     setTasks((current) => [task, ...current])
   }
 
@@ -293,10 +386,10 @@ function App() {
   }
 
   const metrics = [
-    { label: 'Priority leads', value: String(leads.length), trend: `${leads.filter((lead) => lead.score >= 80).length} hot`, tone: 'blue' },
-    { label: 'Open tasks', value: String(openTasks.length), trend: `${tasks.length} total`, tone: 'green' },
-    { label: 'Quote drafts', value: String(quotes.length), trend: latestQuote ? money(latestQuote.landing_price) : '-', tone: 'amber' },
-    { label: 'Customers', value: String(customers.length), trend: selectedCustomer?.stage ? stageLabel(selectedCustomer.stage) : '-', tone: 'slate' },
+    { label: '重点线索', value: String(leads.length), trend: `${leads.filter((lead) => lead.score >= 80).length} 条高意向`, tone: 'blue' },
+    { label: '待办任务', value: String(openTasks.length), trend: `共 ${tasks.length} 条`, tone: 'green' },
+    { label: '报价草案', value: String(quotes.length), trend: latestQuote ? money(latestQuote.landing_price) : '-', tone: 'amber' },
+    { label: '客户档案', value: String(customers.length), trend: selectedCustomer?.stage ? labelText(selectedCustomer.stage) : '-', tone: 'slate' },
   ]
 
   if (loadState !== 'authenticated') {
@@ -305,22 +398,22 @@ function App() {
         <section className="login-visual">
           <img src={showroomImg} alt="" />
           <div>
-            <div className="eyebrow">Auto Sales Agent</div>
-            <h1>Sales workflow console</h1>
-            <p>Lead qualification, customer context, AI recommendations and follow-up execution in one workspace.</p>
+            <div className="eyebrow">汽车销售智能体</div>
+            <h1>汽车销售智能工作台</h1>
+            <p>在线索、客户画像、AI 推荐、报价和跟进任务之间快速流转。</p>
           </div>
         </section>
         <form className="login-panel" onSubmit={(event) => void handleLogin(event)}>
           <div>
-            <h2>Sign in</h2>
-            <p>{loadState === 'checking' ? 'Checking session...' : statusText}</p>
+            <h2>登录</h2>
+            <p>{loadState === 'checking' ? '正在检查登录状态...' : statusText}</p>
           </div>
           <label>
-            Username
+            用户名
             <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
           </label>
           <label>
-            Password
+            密码
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -331,7 +424,7 @@ function App() {
           {loginError && <div className="form-error">{loginError}</div>}
           <button type="submit" disabled={apiState === 'loading'}>
             {apiState === 'loading' ? <RefreshCw size={18} className="spin" /> : <Send size={18} />}
-            Sign in
+            登录
           </button>
         </form>
       </main>
@@ -342,8 +435,8 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">Auto Sales Agent</div>
-          <h1>Sales workflow console</h1>
+          <div className="eyebrow">汽车销售智能体</div>
+          <h1>汽车销售智能工作台</h1>
         </div>
         <div className="topbar-actions">
           <div className={`connection ${apiState}`}>
@@ -353,15 +446,15 @@ function App() {
           <div className="user-chip">
             <UserRound size={16} />
             <span>{user?.display_name}</span>
-            <b>{user?.profile?.role || (user?.is_superuser ? 'admin' : 'user')}</b>
+            <b>{labelText(user?.profile?.role || (user?.is_superuser ? 'admin' : 'user'))}</b>
           </div>
-          <button className="icon-button" type="button" title="Sign out" onClick={() => void handleLogout()}>
+          <button className="icon-button" type="button" title="退出登录" onClick={() => void handleLogout()}>
             <LogOut size={17} />
           </button>
         </div>
       </header>
 
-      <section className="metrics-grid" aria-label="Sales metrics">
+      <section className="metrics-grid" aria-label="销售指标">
         {metrics.map((metric) => (
           <article className={`metric metric-${metric.tone}`} key={metric.label}>
             <span>{metric.label}</span>
@@ -375,10 +468,10 @@ function App() {
         <aside className="lead-queue">
           <div className="section-header compact">
             <div>
-              <h2>Lead queue</h2>
-              <p>{leads.length} active records</p>
+              <h2>线索队列</h2>
+              <p>{leads.length} 条有效记录</p>
             </div>
-            <button type="button" title="Refresh" onClick={() => void loadDesk()}>
+            <button type="button" title="刷新" onClick={() => void loadDesk()}>
               <RefreshCw size={17} className={apiState === 'loading' ? 'spin' : ''} />
             </button>
           </div>
@@ -392,10 +485,10 @@ function App() {
               >
                 <div>
                   <strong>{lead.name || lead.phone}</strong>
-                  <span>{lead.intent_model || 'Intent pending'}</span>
+                  <span>{lead.intent_model || '待确认意向'}</span>
                 </div>
                 <div>
-                  <em>{stageLabel(lead.status)}</em>
+                  <em>{labelText(lead.status)}</em>
                   <b>{lead.score}</b>
                 </div>
               </button>
@@ -410,32 +503,32 @@ function App() {
                 <UserRound size={24} />
               </div>
               <div>
-                <h2>{selectedCustomer?.name || selectedLead?.name || 'No customer selected'}</h2>
+                <h2>{labelText(selectedCustomer?.name || selectedLead?.name || '未选择客户')}</h2>
                 <p>
-                  {selectedCustomer?.phone || selectedLead?.phone || '-'} · {selectedCustomer?.city || selectedLead?.city || '-'}
+                  {selectedCustomer?.phone || selectedLead?.phone || '-'} · {labelText(selectedCustomer?.city || selectedLead?.city || '-')}
                 </p>
               </div>
               <div className="score-block">
-                <span>Probability</span>
+                <span>成交概率</span>
                 <strong>{selectedCustomer?.deal_probability ?? selectedLead?.score ?? 0}</strong>
               </div>
             </div>
             <div className="customer-fields">
               <div>
-                <span>Stage</span>
-                <strong>{stageLabel(selectedCustomer?.stage || selectedLead?.status)}</strong>
+                <span>阶段</span>
+                <strong>{labelText(selectedCustomer?.stage || selectedLead?.status)}</strong>
               </div>
               <div>
-                <span>Owner</span>
-                <strong>{selectedCustomer?.owner_name || selectedLead?.assigned_to_name || '-'}</strong>
+                <span>负责人</span>
+                <strong>{labelText(selectedCustomer?.owner_name || selectedLead?.assigned_to_name || '-')}</strong>
               </div>
               <div>
-                <span>Store</span>
-                <strong>{selectedCustomer?.store_name || selectedLead?.store_name || '-'}</strong>
+                <span>门店</span>
+                <strong>{labelText(selectedCustomer?.store_name || selectedLead?.store_name || '-')}</strong>
               </div>
               <div>
-                <span>Next action</span>
-                <strong>{selectedCustomer?.next_action || 'Qualify demand'}</strong>
+                <span>下一步</span>
+                <strong>{localizeText(selectedCustomer?.next_action) || '确认购车需求'}</strong>
               </div>
             </div>
           </section>
@@ -445,7 +538,7 @@ function App() {
             <div className="command-copy">
               <Sparkles size={18} />
               <div>
-                <h2>AI demand assistant</h2>
+                <h2>AI 需求助手</h2>
                 <p>{recommendation.summary}</p>
               </div>
             </div>
@@ -456,8 +549,8 @@ function App() {
                 void runRecommendation()
               }}
             >
-              <input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Customer demand" />
-              <button type="submit" title="Run recommendation" disabled={apiState === 'loading'}>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="客户需求" />
+              <button type="submit" title="生成推荐" disabled={apiState === 'loading'}>
                 {apiState === 'loading' ? <RefreshCw size={18} className="spin" /> : <Send size={18} />}
               </button>
             </form>
@@ -466,12 +559,12 @@ function App() {
           <section className="vehicle-section">
             <div className="section-header">
               <div>
-                <h2>Recommended vehicles</h2>
-                <p>{selectedCustomer?.demand_profile?.ai_summary || 'Live inventory ranked by demand fit.'}</p>
+                <h2>推荐车型</h2>
+                <p>{localizeText(selectedCustomer?.demand_profile?.ai_summary) || '根据客户需求和现有库存实时排序。'}</p>
               </div>
               <button className="text-action" type="button" onClick={() => void runRecommendation()}>
                 <RefreshCw size={16} />
-                Refresh
+                刷新
               </button>
             </div>
             <div className="vehicle-list">
@@ -484,7 +577,7 @@ function App() {
                 >
                   <div className="vehicle-media" aria-hidden="true">
                     <CarFront size={34} />
-                    <span>{card.exterior_color}</span>
+                    <span>{labelText(card.exterior_color)}</span>
                   </div>
                   <div className="vehicle-body">
                     <div className="vehicle-title-row">
@@ -493,10 +586,10 @@ function App() {
                     </div>
                     <div className="vehicle-meta">
                       <span>{money(card.price)}</span>
-                      <span>{card.range_km ? `${card.range_km} km` : 'Range n/a'}</span>
-                      <span>{stageLabel(card.inventory_status)}</span>
+                      <span>{card.range_km ? `${card.range_km} km` : '续航待确认'}</span>
+                      <span>{labelText(card.inventory_status)}</span>
                     </div>
-                    <p>{card.reasons[0] || 'Inventory match available.'}</p>
+                    <p>{card.reasons[0] || '当前库存中有匹配车型。'}</p>
                   </div>
                 </button>
               ))}
@@ -506,7 +599,7 @@ function App() {
           <section className="detail-grid">
             <div className="detail-panel">
               <div className="section-header compact">
-                <h2>Match rationale</h2>
+                <h2>匹配理由</h2>
                 <Gauge size={18} />
               </div>
               <ul className="reason-list">
@@ -527,10 +620,10 @@ function App() {
 
             <div className="detail-panel quote-panel">
               <div className="section-header compact">
-                <h2>Quote draft</h2>
+                <h2>报价草案</h2>
                 <button
                   type="button"
-                  title="Generate quote"
+                  title="生成报价"
                   disabled={!selectedCard}
                   onClick={() => selectedCard && void chooseVehicle(selectedCard)}
                 >
@@ -539,23 +632,23 @@ function App() {
               </div>
               <dl>
                 <div>
-                  <dt>Landing price</dt>
+                  <dt>落地价</dt>
                   <dd>{money(quoteDraft?.landing_price || latestQuote?.landing_price)}</dd>
                 </div>
                 <div>
-                  <dt>Discount</dt>
+                  <dt>优惠</dt>
                   <dd>{money(quoteDraft?.discount_amount || latestQuote?.discount_amount)}</dd>
                 </div>
                 <div>
-                  <dt>Down payment</dt>
+                  <dt>首付</dt>
                   <dd>{money(quoteDraft?.finance_down_payment || latestQuote?.finance_down_payment)}</dd>
                 </div>
                 <div>
-                  <dt>Monthly</dt>
+                  <dt>月供</dt>
                   <dd>{money(quoteDraft?.finance_monthly_payment || latestQuote?.finance_monthly_payment)}</dd>
                 </div>
               </dl>
-              <p>{quoteDraft?.explanation || latestQuote?.ai_explanation || 'Draft price pending.'}</p>
+              <p>{localizeText(quoteDraft?.explanation || latestQuote?.ai_explanation) || '报价草案待生成。'}</p>
             </div>
           </section>
         </section>
@@ -563,8 +656,8 @@ function App() {
         <aside className="side-column">
           <section className="script-panel">
             <div className="section-header compact">
-              <h2>Follow-up script</h2>
-              <button type="button" title="Log follow-up" disabled={!selectedCustomer} onClick={() => void logFollowup()}>
+              <h2>跟进话术</h2>
+              <button type="button" title="记录跟进" disabled={!selectedCustomer} onClick={() => void logFollowup()}>
                 <MessageSquareText size={18} />
               </button>
             </div>
@@ -575,13 +668,13 @@ function App() {
               ))}
             </ul>
             <div className="profile-actions">
-              <button type="button" title="Call customer" disabled={!selectedCustomer}>
+              <button type="button" title="拨打客户电话" disabled={!selectedCustomer}>
                 <PhoneCall size={17} />
               </button>
-              <button type="button" title="Add task" disabled={!selectedCustomer} onClick={() => void addFollowupTask()}>
+              <button type="button" title="新增任务" disabled={!selectedCustomer} onClick={() => void addFollowupTask()}>
                 <ClipboardList size={17} />
               </button>
-              <button type="button" title="Test drive" disabled={!selectedCustomer}>
+              <button type="button" title="预约试驾" disabled={!selectedCustomer}>
                 <CalendarClock size={17} />
               </button>
             </div>
@@ -589,18 +682,18 @@ function App() {
 
           <section className="task-panel">
             <div className="section-header compact">
-              <h2>Open tasks</h2>
+              <h2>待办任务</h2>
               <span>{openTasks.length}</span>
             </div>
             <div className="timeline-list">
               {tasks.slice(0, 5).map((task) => (
                 <div className={`timeline-row ${task.status}`} key={task.id}>
                   <div>
-                    <strong>{task.title}</strong>
-                    <span>{dateTime(task.due_at)} · {stageLabel(task.status)}</span>
+                    <strong>{localizeText(task.title)}</strong>
+                    <span>{dateTime(task.due_at)} · {labelText(task.status)}</span>
                   </div>
                   {task.status === 'open' && (
-                    <button type="button" title="Mark done" onClick={() => void markDone(task)}>
+                    <button type="button" title="标记完成" onClick={() => void markDone(task)}>
                       <ClipboardCheck size={16} />
                     </button>
                   )}
@@ -611,16 +704,16 @@ function App() {
 
           <section className="task-panel">
             <div className="section-header compact">
-              <h2>Activity</h2>
+              <h2>跟进记录</h2>
               <span>{interactions.length}</span>
             </div>
             <div className="timeline-list">
               {interactions.slice(0, 5).map((item) => (
                 <div className="timeline-row" key={item.id}>
                   <div>
-                    <strong>{stageLabel(item.channel)}</strong>
+                    <strong>{labelText(item.channel)}</strong>
                     <span>{dateTime(item.occurred_at)}</span>
-                    <p>{item.summary}</p>
+                    <p>{localizeText(item.summary)}</p>
                   </div>
                 </div>
               ))}
@@ -629,16 +722,16 @@ function App() {
 
           <section className="task-panel">
             <div className="section-header compact">
-              <h2>Sales state</h2>
-              <span>{nextTestDrive ? stageLabel(nextTestDrive.status) : 'No drive'}</span>
+              <h2>销售状态</h2>
+              <span>{nextTestDrive ? labelText(nextTestDrive.status) : '暂无试驾'}</span>
             </div>
             <div className="state-stack">
               <div>
-                <span>Next test drive</span>
+                <span>下次试驾</span>
                 <strong>{nextTestDrive ? dateTime(nextTestDrive.scheduled_at) : '-'}</strong>
               </div>
               <div>
-                <span>Latest quote</span>
+                <span>最新报价</span>
                 <strong>{latestQuote ? money(latestQuote.landing_price) : '-'}</strong>
               </div>
             </div>
