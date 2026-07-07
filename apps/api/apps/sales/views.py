@@ -5,7 +5,15 @@ from .serializers import OrderSerializer, QuoteSerializer, TestDriveSerializer
 
 
 class TestDriveViewSet(viewsets.ModelViewSet):
-    queryset = TestDrive.objects.select_related("customer", "inventory", "consultant").all()
+    queryset = TestDrive.objects.select_related(
+        "customer",
+        "inventory",
+        "inventory__trim",
+        "inventory__trim__model",
+        "inventory__trim__model__series",
+        "inventory__trim__model__series__brand",
+        "consultant",
+    ).all()
     serializer_class = TestDriveSerializer
     filterset_fields = ("customer", "inventory", "consultant", "status")
     search_fields = ("customer__name", "inventory__vin", "feedback")
@@ -13,7 +21,15 @@ class TestDriveViewSet(viewsets.ModelViewSet):
 
 
 class QuoteViewSet(viewsets.ModelViewSet):
-    queryset = Quote.objects.select_related("customer", "inventory", "consultant").all()
+    queryset = Quote.objects.select_related(
+        "customer",
+        "inventory",
+        "inventory__trim",
+        "inventory__trim__model",
+        "inventory__trim__model__series",
+        "inventory__trim__model__series__brand",
+        "consultant",
+    ).all()
     serializer_class = QuoteSerializer
     filterset_fields = ("customer", "inventory", "consultant", "status")
     search_fields = ("customer__name", "inventory__vin", "ai_explanation", "notes")
@@ -21,7 +37,16 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.select_related("customer", "quote", "inventory", "consultant").all()
+    queryset = Order.objects.select_related(
+        "customer",
+        "quote",
+        "inventory",
+        "inventory__trim",
+        "inventory__trim__model",
+        "inventory__trim__model__series",
+        "inventory__trim__model__series__brand",
+        "consultant",
+    ).all()
     serializer_class = OrderSerializer
     filterset_fields = ("customer", "inventory", "consultant", "status")
     search_fields = ("order_number", "customer__name", "inventory__vin", "notes")

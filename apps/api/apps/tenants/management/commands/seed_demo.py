@@ -59,7 +59,7 @@ class Command(BaseCommand):
         brands = self._seed_vehicles(store)
         customer = self._seed_customer(tenant, store, consultant)
         self._seed_sales(customer, consultant)
-        self._seed_leads(tenant, store, consultant, web_source, live_source)
+        self._seed_leads(tenant, store, consultant, web_source, live_source, customer)
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -270,13 +270,14 @@ class Command(BaseCommand):
             },
         )
 
-    def _seed_leads(self, tenant, store, consultant, web_source, live_source):
+    def _seed_leads(self, tenant, store, consultant, web_source, live_source, customer):
         lead_specs = [
-            ("Mia Chen", "13900001002", "Nova X", web_source, 86),
-            ("Leo Wang", "13700001003", "Trail PHEV", live_source, 72),
-            ("Ivy Liu", "13600001004", "City E", web_source, 61),
+            ("Demo Customer", "13800001001", "Nova X", web_source, 90, customer),
+            ("Mia Chen", "13900001002", "Nova X", web_source, 86, None),
+            ("Leo Wang", "13700001003", "Trail PHEV", live_source, 72, None),
+            ("Ivy Liu", "13600001004", "City E", web_source, 61, None),
         ]
-        for name, phone, intent_model, source, score in lead_specs:
+        for name, phone, intent_model, source, score, linked_customer in lead_specs:
             Lead.objects.get_or_create(
                 tenant=tenant,
                 phone=phone,
@@ -293,5 +294,6 @@ class Command(BaseCommand):
                     "ai_tags": ["demo", "valid_lead"],
                     "score": score,
                     "status": Lead.Status.QUALIFIED,
+                    "customer": linked_customer,
                 },
             )

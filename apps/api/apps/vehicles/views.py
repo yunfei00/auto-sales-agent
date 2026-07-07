@@ -41,7 +41,13 @@ class VehicleTrimViewSet(viewsets.ModelViewSet):
 
 
 class VehicleInventoryViewSet(viewsets.ModelViewSet):
-    queryset = VehicleInventory.objects.select_related("store", "trim", "trim__model").all()
+    queryset = VehicleInventory.objects.select_related(
+        "store",
+        "trim",
+        "trim__model",
+        "trim__model__series",
+        "trim__model__series__brand",
+    ).all()
     serializer_class = VehicleInventorySerializer
     filterset_fields = ("store", "trim", "status", "exterior_color", "interior_color")
     search_fields = ("vin", "trim__name", "trim__model__name", "notes")
