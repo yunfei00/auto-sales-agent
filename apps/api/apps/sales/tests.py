@@ -8,7 +8,7 @@ from apps.customers.models import Customer
 from apps.tenants.models import Store, Tenant
 from apps.vehicles.models import Brand, VehicleInventory, VehicleModel, VehicleSeries, VehicleTrim
 
-from .models import Quote, TestDrive
+from .models import Order, Quote, TestDrive
 
 
 class SalesWorkflowApiTests(TestCase):
@@ -91,3 +91,34 @@ class SalesWorkflowApiTests(TestCase):
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.stage, Customer.Stage.QUOTED)
         self.assertEqual(self.customer.next_action, "发送报价并确认订金意向")
+
+    def test_create_order_assigns_consultant_and_updates_customer_stage(self):
+        quote = Quote.objects.create(
+            customer=self.customer,
+            inventory=self.inventory,
+            bare_vehicle_price=Decimal("192800.00"),
+            landing_price=Decimal("196800.00"),
+        )
+
+        response = self.client.post(
+            "/api/sales/orders/",
+            {
+                "order_number": "AS202607070001",
+                "customer": self.customer.id,
+                "quote": quote.id,
+                "inventory": self.inventory.id,
+                "status": Order.Status.DEPOSIT_PAID,
+                "deposit_amount": "10000.00",
+                "paid_amount": "10000.00",
+                "total_amount": "196800.00",
+                "expected_delivery_date": "2026-07-14",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.get(id=response.json()["id"])
+        self.assertEqual(order.consultant, self.user)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.stage, Customer.Stage.DEPOSIT_PAID)
+        self.assertEqual(self.customer.next_action, "推进合同签署和交付准备")
