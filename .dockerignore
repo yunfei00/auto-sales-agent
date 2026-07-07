@@ -1,0 +1,12 @@
+.git/
+.codex/
+refer_to/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/db.sqlite3
+**/media/
+**/staticfiles/
+node_modules/
