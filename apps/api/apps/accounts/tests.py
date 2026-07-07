@@ -19,6 +19,7 @@ class SessionApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["authenticated"])
+        self.assertTrue(response.json()["csrf_token"])
 
     def test_login_and_logout(self):
         response = self.client.post(
@@ -31,6 +32,7 @@ class SessionApiTests(TestCase):
         payload = response.json()
         self.assertTrue(payload["authenticated"])
         self.assertEqual(payload["user"]["profile"]["role"], UserProfile.Role.SALES_CONSULTANT)
+        self.assertTrue(payload["csrf_token"])
 
         response = self.client.post(reverse("account-logout"))
         self.assertEqual(response.status_code, 200)

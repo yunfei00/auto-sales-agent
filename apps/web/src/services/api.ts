@@ -1,3 +1,147 @@
+export type UserProfile = {
+  role: string
+  phone: string
+  tenant: number | null
+  tenant_name: string
+  store: number | null
+  store_name: string
+}
+
+export type CurrentUser = {
+  id: number
+  username: string
+  email: string
+  first_name: string
+  last_name: string
+  display_name: string
+  is_staff: boolean
+  is_superuser: boolean
+  profile?: UserProfile | null
+}
+
+export type SessionPayload = {
+  authenticated: boolean
+  user: CurrentUser | null
+  csrf_token?: string
+}
+
+export type DemandProfile = {
+  id: number
+  budget_min: string | null
+  budget_max: string | null
+  energy_type: string
+  body_type: string
+  seats: number | null
+  preferred_brands: string[]
+  preferred_models: string[]
+  usage_scenario: string
+  payment_preference: string
+  trade_in_intent: boolean
+  purchase_timeline: string
+  key_concerns: string[]
+  competitor_models: string[]
+  ai_summary: string
+}
+
+export type Lead = {
+  id: number
+  name: string
+  phone: string
+  city: string
+  intent_model: string
+  budget_min: string | null
+  budget_max: string | null
+  purchase_timeline: string
+  ai_tags: string[]
+  score: number
+  status: string
+  notes: string
+  customer: number | null
+  customer_name: string
+  store_name: string
+  source_name: string
+  assigned_to_name: string
+  created_at: string
+  updated_at: string
+}
+
+export type Customer = {
+  id: number
+  name: string
+  phone: string
+  wechat: string
+  city: string
+  source_label: string
+  stage: string
+  tags: string[]
+  deal_probability: number
+  next_action: string
+  next_action_due_at: string | null
+  tenant_name: string
+  store_name: string
+  owner_name: string
+  demand_profile?: DemandProfile | null
+}
+
+export type CustomerTask = {
+  id: number
+  customer: number
+  customer_name: string
+  owner: number | null
+  owner_name: string
+  title: string
+  task_type: string
+  due_at: string | null
+  priority: number
+  status: string
+  notes: string
+}
+
+export type Interaction = {
+  id: number
+  customer: number
+  customer_name: string
+  channel: string
+  occurred_at: string
+  summary: string
+  raw_content: string
+  ai_summary: string
+  created_by_name: string
+}
+
+export type Quote = {
+  id: number
+  customer: number
+  customer_name: string
+  inventory: number | null
+  inventory_title: string
+  consultant_name: string
+  status: string
+  bare_vehicle_price: string
+  discount_amount: string
+  insurance_amount: string
+  license_fee: string
+  accessory_amount: string
+  finance_down_payment: string | null
+  finance_monthly_payment: string | null
+  landing_price: string
+  ai_explanation: string
+  notes: string
+  created_at: string
+}
+
+export type TestDrive = {
+  id: number
+  customer: number
+  customer_name: string
+  inventory: number | null
+  inventory_title: string
+  consultant_name: string
+  scheduled_at: string
+  status: string
+  feedback: string
+}
+
 export type VehicleCard = {
   inventory_id: number
   vin: string
@@ -60,143 +204,187 @@ export type QuoteSuggestionResult = {
   explanation: string
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
+type Paginated<T> = {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
 
-async function postJson<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
+let sessionCsrfToken = ''
+
+function getCookie(name: string) {
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || ''
+  return ''
+}
+
+function buildUrl(path: string) {
+  return `${API_BASE_URL}${path}`
+}
+
+async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method || 'GET'
+  const headers = new Headers(init.headers)
+  const csrfToken = getCookie('csrftoken') || sessionCsrfToken
+
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (csrfToken && method !== 'GET' && method !== 'HEAD') {
+    headers.set('X-CSRFToken', csrfToken)
+  }
+
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+    headers,
   })
 
   if (!response.ok) {
-    throw new Error(`API ${path} failed with ${response.status}`)
+    const message = await response.text()
+    throw new Error(message || `API ${path} failed with ${response.status}`)
   }
 
   return response.json() as Promise<T>
 }
 
-export function requestVehicleRecommendations(message: string) {
+function postJson<T>(path: string, payload: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+function patchJson<T>(path: string, payload: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+async function getCollection<T>(path: string): Promise<T[]> {
+  const payload = await requestJson<Paginated<T> | T[]>(path)
+  return Array.isArray(payload) ? payload : payload.results
+}
+
+export function getSession() {
+  return requestJson<SessionPayload>('/api/accounts/session/').then((payload) => {
+    sessionCsrfToken = payload.csrf_token || sessionCsrfToken
+    return payload
+  })
+}
+
+export function login(username: string, password: string) {
+  return postJson<SessionPayload>('/api/accounts/login/', { username, password }).then((payload) => {
+    sessionCsrfToken = payload.csrf_token || sessionCsrfToken
+    return payload
+  })
+}
+
+export function logout() {
+  return postJson<SessionPayload>('/api/accounts/logout/', {}).then((payload) => {
+    sessionCsrfToken = payload.csrf_token || ''
+    return payload
+  })
+}
+
+export function listLeads() {
+  return getCollection<Lead>('/api/leads/?ordering=-score')
+}
+
+export function listCustomers() {
+  return getCollection<Customer>('/api/customers/?ordering=-deal_probability')
+}
+
+export function getCustomer(customerId: number) {
+  return requestJson<Customer>(`/api/customers/${customerId}/`)
+}
+
+export function searchCustomers(query: string) {
+  return getCollection<Customer>(`/api/customers/?search=${encodeURIComponent(query)}`)
+}
+
+export function listCustomerTasks(customerId: number) {
+  return getCollection<CustomerTask>(`/api/customers/tasks/?customer=${customerId}&ordering=status,due_at`)
+}
+
+export function listCustomerInteractions(customerId: number) {
+  return getCollection<Interaction>(`/api/customers/interactions/?customer=${customerId}&ordering=-occurred_at`)
+}
+
+export function listCustomerQuotes(customerId: number) {
+  return getCollection<Quote>(`/api/sales/quotes/?customer=${customerId}&ordering=-created_at`)
+}
+
+export function listCustomerTestDrives(customerId: number) {
+  return getCollection<TestDrive>(`/api/sales/test-drives/?customer=${customerId}&ordering=-scheduled_at`)
+}
+
+export function createCustomerTask(customerId: number, title: string) {
+  const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  return postJson<CustomerTask>('/api/customers/tasks/', {
+    customer: customerId,
+    title,
+    task_type: 'follow_up',
+    due_at: dueAt,
+    priority: 1,
+    status: 'open',
+  })
+}
+
+export function completeCustomerTask(taskId: number) {
+  return patchJson<CustomerTask>(`/api/customers/tasks/${taskId}/`, { status: 'done' })
+}
+
+export function createInteraction(customerId: number, summary: string, channel = 'wechat') {
+  return postJson<Interaction>('/api/customers/interactions/', {
+    customer: customerId,
+    channel,
+    occurred_at: new Date().toISOString(),
+    summary,
+    raw_content: summary,
+    ai_summary: summary,
+  })
+}
+
+export function requestVehicleRecommendations(message: string, customerId?: number | null) {
   return postJson<VehicleRecommendationResult>('/api/ai/recommendations/vehicles/', {
     message,
+    customer_id: customerId || undefined,
     limit: 3,
   })
 }
 
-export function requestFollowupScript(customerId = 1, scenario = 'test_drive') {
+export function requestFollowupScript(customerId?: number | null, scenario = 'test_drive') {
   return postJson<FollowupScriptResult>('/api/ai/followups/generate/', {
-    customer_id: customerId,
+    customer_id: customerId || undefined,
     scenario,
   })
 }
 
-export function requestQuoteSuggestion(inventoryId: number, customerId = 1) {
+export function requestQuoteSuggestion(inventoryId: number, customerId?: number | null) {
   return postJson<QuoteSuggestionResult>('/api/ai/quotes/suggest/', {
     inventory_id: inventoryId,
-    customer_id: customerId,
+    customer_id: customerId || undefined,
   })
 }
 
-export const fallbackRecommendation: VehicleRecommendationResult = {
+export const emptyRecommendation: VehicleRecommendationResult = {
   type: 'vehicle_recommendation',
-  summary: 'Local fallback: recommended vehicles are shown while the API is unavailable.',
-  demand: {
-    budget_min: '180000.00',
-    budget_max: '220000.00',
-    energy_type: 'bev',
-    body_type: 'SUV',
-  },
-  cards: [
-    {
-      inventory_id: 1,
-      vin: 'ASTERNOVAX000001',
-      vehicle_model_id: 1,
-      title: 'Aster Nova X Long Range Pro',
-      brand: 'Aster',
-      model: 'Nova X',
-      trim: 'Long Range Pro',
-      price: '192800.00',
-      official_price: '198800.00',
-      inventory_status: 'available',
-      exterior_color: 'Pearl White',
-      range_km: 620,
-      match_score: 95,
-      reasons: ['Price fits the stated budget range.', 'Body type matches: SUV.', 'In stock and available for delivery.'],
-      risks: ['White stock is limited.'],
-      policy: { title: 'Nova X demo cash discount', amount: '6000.00' },
-      actions: ['generate_quote', 'book_test_drive', 'generate_followup'],
-    },
-    {
-      inventory_id: 2,
-      vin: 'ASTERNOVAX000002',
-      vehicle_model_id: 1,
-      title: 'Aster Nova X Urban Plus',
-      brand: 'Aster',
-      model: 'Nova X',
-      trim: 'Urban Plus',
-      price: '172800.00',
-      official_price: '178800.00',
-      inventory_status: 'available',
-      exterior_color: 'Graphite Gray',
-      range_km: 520,
-      match_score: 87,
-      reasons: ['Strong budget fit.', 'Compact SUV size works for city commuting.', 'Active cash discount is available.'],
-      risks: [],
-      policy: { title: 'Nova X demo cash discount', amount: '6000.00' },
-      actions: ['generate_quote', 'book_test_drive', 'generate_followup'],
-    },
-    {
-      inventory_id: 3,
-      vin: 'ORIONTRAIL000001',
-      vehicle_model_id: 2,
-      title: 'Orion Trail PHEV Family Max',
-      brand: 'Orion',
-      model: 'Trail PHEV',
-      trim: 'Family Max',
-      price: '212800.00',
-      official_price: '218800.00',
-      inventory_status: 'available',
-      exterior_color: 'Deep Blue',
-      range_km: 1100,
-      match_score: 82,
-      reasons: ['Family-focused SUV.', 'Long combined range reduces charging anxiety.', 'Trade-in policy can improve landing cost.'],
-      risks: ['Slightly above the center of the budget range.'],
-      policy: { title: 'Trail demo cash discount', amount: '6000.00' },
-      actions: ['generate_quote', 'book_test_drive', 'generate_followup'],
-    },
-  ],
-  next_best_actions: [
-    { action: 'book_test_drive', label: 'Book a test drive', priority: 'high' },
-    { action: 'generate_quote', label: 'Generate quote draft', priority: 'high' },
-  ],
+  summary: 'No recommendation has been generated yet.',
+  demand: {},
+  cards: [],
+  next_best_actions: [],
 }
 
-export const fallbackFollowup: FollowupScriptResult = {
+export const emptyFollowup: FollowupScriptResult = {
   type: 'followup_script',
   scenario: 'test_drive',
-  script:
-    'Hi Demo Customer, the recommended SUV is available for a weekend test drive. I can reserve a slot and prepare a finance plan before you arrive.',
-  talking_points: ['Confirm budget and purchase timeline.', 'Reserve a test drive slot.', 'Offer finance and trade-in comparison.'],
+  script: 'Select a customer and generate a follow-up script.',
+  talking_points: [],
   next_best_action: { action: 'book_test_drive', label: 'Book test drive' },
-}
-
-export function fallbackQuote(inventoryId: number): QuoteSuggestionResult {
-  return {
-    type: 'quote_suggestion',
-    customer_id: 1,
-    inventory_id: inventoryId,
-    vin: 'ASTERNOVAX000001',
-    bare_vehicle_price: '192800.00',
-    discount_amount: '6000.00',
-    insurance_amount: '5800.00',
-    license_fee: '1200.00',
-    accessory_amount: '3000.00',
-    landing_price: '196800.00',
-    finance_down_payment: '59040.00',
-    finance_monthly_payment: '3826.67',
-    explanation: 'Draft only. Final price, finance approval and insurance quote must be confirmed by the store.',
-  }
 }

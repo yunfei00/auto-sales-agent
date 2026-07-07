@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -13,6 +14,7 @@ def _session_payload(request):
     return {
         "authenticated": bool(user),
         "user": CurrentUserSerializer(user).data if user else None,
+        "csrf_token": get_token(request),
     }
 
 
