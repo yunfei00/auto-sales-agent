@@ -65,6 +65,20 @@ export type Lead = {
   updated_at: string
 }
 
+export type LeadImportJob = {
+  id: number
+  tenant: number
+  source: number | null
+  file: string
+  original_filename: string
+  status: string
+  total_rows: number
+  imported_rows: number
+  error_message: string
+  created_by: number | null
+  created_at: string
+}
+
 export type Customer = {
   id: number
   name: string
@@ -301,7 +315,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   const headers = new Headers(init.headers)
   const csrfToken = getCookie('csrftoken') || sessionCsrfToken
 
-  if (init.body && !headers.has('Content-Type')) {
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   if (csrfToken && method !== 'GET' && method !== 'HEAD') {
@@ -365,6 +379,36 @@ export function logout() {
 
 export function listLeads() {
   return getCollection<Lead>('/api/leads/?ordering=-score')
+}
+
+export function listLeadImports() {
+  return getCollection<LeadImportJob>('/api/leads/imports/?ordering=-created_at')
+}
+
+export function createLead(payload: {
+  name: string
+  phone: string
+  city?: string
+  intent_model?: string
+  budget_min?: string
+  budget_max?: string
+  purchase_timeline?: string
+  notes?: string
+}) {
+  return postJson<Lead>('/api/leads/', {
+    ...payload,
+    score: payload.intent_model ? 76 : 58,
+    status: payload.intent_model ? 'qualified' : 'new',
+  })
+}
+
+export function importLeadCsv(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return requestJson<LeadImportJob>('/api/leads/imports/', {
+    method: 'POST',
+    body: form,
+  })
 }
 
 export function getDashboardSummary() {

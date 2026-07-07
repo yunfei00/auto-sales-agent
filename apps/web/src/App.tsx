@@ -12,10 +12,12 @@ import {
   LogOut,
   MessageSquareText,
   PhoneCall,
+  Plus,
   RefreshCw,
   Send,
   ShieldCheck,
   Sparkles,
+  Upload,
   UsersRound,
   UserRound,
   Warehouse,
@@ -32,6 +34,7 @@ import {
   type FollowupScriptResult,
   type Interaction,
   type Lead,
+  type LeadImportJob,
   type Order,
   type Quote,
   type QuoteSuggestionResult,
@@ -40,6 +43,7 @@ import {
   type VehicleInventory,
   type VehicleRecommendationResult,
   completeCustomerTask,
+  createLead,
   createCustomerTask,
   createInteraction,
   createOrderFromQuote,
@@ -50,11 +54,13 @@ import {
   getCustomer,
   getDashboardSummary,
   getSession,
+  importLeadCsv,
   listCustomerInteractions,
   listCustomerQuotes,
   listCustomerTasks,
   listCustomerTestDrives,
   listCustomers,
+  listLeadImports,
   listInventory,
   listLeads,
   listOrders,
@@ -70,7 +76,7 @@ import {
 
 type LoadState = 'checking' | 'anonymous' | 'authenticated'
 type ApiState = 'ready' | 'loading' | 'error'
-type ActiveView = 'desk' | 'customers' | 'inventory' | 'sales' | 'dashboard'
+type ActiveView = 'desk' | 'leads' | 'customers' | 'inventory' | 'sales' | 'dashboard'
 
 function money(value?: string | null) {
   if (!value) return '-'
@@ -217,6 +223,7 @@ function App() {
   const [activeView, setActiveView] = useState<ActiveView>('desk')
 
   const [leads, setLeads] = useState<Lead[]>([])
+  const [leadImports, setLeadImports] = useState<LeadImportJob[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
   const [inventory, setInventory] = useState<VehicleInventory[]>([])
@@ -235,6 +242,17 @@ function App() {
   const [selectedCard, setSelectedCard] = useState<VehicleCard | null>(null)
   const [followup, setFollowup] = useState<FollowupScriptResult>(emptyFollowup)
   const [quoteDraft, setQuoteDraft] = useState<QuoteSuggestionResult | null>(null)
+  const [manualLead, setManualLead] = useState({
+    name: '',
+    phone: '',
+    city: '上海',
+    intent_model: '',
+    budget_min: '',
+    budget_max: '',
+    purchase_timeline: '本月',
+    notes: '',
+  })
+  const [leadImportFile, setLeadImportFile] = useState<File | null>(null)
 
   const selectedLead = useMemo(
     () => leads.find((lead) => lead.id === selectedLeadId) || null,
@@ -273,8 +291,9 @@ function App() {
   async function loadDesk() {
     setApiState('loading')
     setStatusText('正在加载销售流程')
-    const [leadList, customerList, summary, inventoryList, quoteList, driveList, orderList] = await Promise.all([
+    const [leadList, importList, customerList, summary, inventoryList, quoteList, driveList, orderList] = await Promise.all([
       listLeads(),
+      listLeadImports(),
       listCustomers(),
       getDashboardSummary(),
       listInventory(),
@@ -283,6 +302,7 @@ function App() {
       listOrders(),
     ])
     setLeads(leadList)
+    setLeadImports(importList)
     setCustomers(customerList)
     setDashboardSummary(summary)
     setInventory(inventoryList)
@@ -504,6 +524,58 @@ function App() {
     setStatusText('跟进记录已保存')
   }
 
+  async function submitManualLead(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!manualLead.phone.trim()) {
+      setStatusText('请填写手机号')
+      return
+    }
+    setApiState('loading')
+    try {
+      const lead = await createLead(manualLead)
+      const [summary, importList] = await Promise.all([getDashboardSummary(), listLeadImports()])
+      setLeads((current) => [lead, ...current.filter((item) => item.id !== lead.id)])
+      setDashboardSummary(summary)
+      setLeadImports(importList)
+      setManualLead({
+        name: '',
+        phone: '',
+        city: '上海',
+        intent_model: '',
+        budget_min: '',
+        budget_max: '',
+        purchase_timeline: '本月',
+        notes: '',
+      })
+      setApiState('ready')
+      setStatusText('手工线索已创建')
+    } catch {
+      setApiState('error')
+      setStatusText('线索创建失败')
+    }
+  }
+
+  async function uploadLeadImport() {
+    if (!leadImportFile) {
+      setStatusText('请选择 CSV 文件')
+      return
+    }
+    setApiState('loading')
+    try {
+      const job = await importLeadCsv(leadImportFile)
+      const [leadList, summary, importList] = await Promise.all([listLeads(), getDashboardSummary(), listLeadImports()])
+      setLeads(leadList)
+      setDashboardSummary(summary)
+      setLeadImports([job, ...importList.filter((item) => item.id !== job.id)])
+      setLeadImportFile(null)
+      setApiState(job.status === 'completed' ? 'ready' : 'error')
+      setStatusText(job.status === 'completed' ? `已导入 ${job.imported_rows} 条线索` : '线索导入失败')
+    } catch {
+      setApiState('error')
+      setStatusText('线索导入失败')
+    }
+  }
+
   async function generateOrder(quote: Quote) {
     if (!quote.inventory) return
     setApiState('loading')
@@ -551,6 +623,7 @@ function App() {
   ]
   const navItems = [
     { id: 'desk' as const, label: '销售工作台', helper: '线索到成交', icon: LayoutDashboard, count: leads.length },
+    { id: 'leads' as const, label: '获客管理', helper: '录入与导入', icon: Upload, count: leadImports.length },
     { id: 'customers' as const, label: '客户档案', helper: '画像与跟进', icon: UsersRound, count: customers.length },
     { id: 'inventory' as const, label: '车辆资源', helper: '库存与车型', icon: Warehouse, count: inventory.length },
     { id: 'sales' as const, label: '报价订单', helper: '试驾与订单', icon: FileText, count: allQuotes.length + orders.length },
@@ -954,6 +1027,150 @@ function App() {
         </aside>
           </section>
         </>
+      )}
+
+      {activeView === 'leads' && (
+        <section className="page-panel">
+          <div className="section-header">
+            <div>
+              <h2>获客管理</h2>
+              <p>手工录入、CSV 导入和线索分配状态。</p>
+            </div>
+            <button className="text-action" type="button" onClick={() => void loadDesk()}>
+              <RefreshCw size={16} />
+              刷新
+            </button>
+          </div>
+          <div className="lead-capture-grid">
+            <form className="lead-form record-card" onSubmit={(event) => void submitManualLead(event)}>
+              <div className="section-header compact">
+                <h2>手工录入</h2>
+                <Plus size={18} />
+              </div>
+              <label>
+                姓名
+                <input
+                  value={manualLead.name}
+                  onChange={(event) => setManualLead((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="客户姓名"
+                />
+              </label>
+              <label>
+                手机号
+                <input
+                  value={manualLead.phone}
+                  onChange={(event) => setManualLead((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="13800000000"
+                />
+              </label>
+              <div className="form-grid">
+                <label>
+                  城市
+                  <input
+                    value={manualLead.city}
+                    onChange={(event) => setManualLead((current) => ({ ...current, city: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  意向车型
+                  <input
+                    value={manualLead.intent_model}
+                    onChange={(event) => setManualLead((current) => ({ ...current, intent_model: event.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="form-grid">
+                <label>
+                  预算下限
+                  <input
+                    value={manualLead.budget_min}
+                    onChange={(event) => setManualLead((current) => ({ ...current, budget_min: event.target.value }))}
+                    placeholder="180000"
+                  />
+                </label>
+                <label>
+                  预算上限
+                  <input
+                    value={manualLead.budget_max}
+                    onChange={(event) => setManualLead((current) => ({ ...current, budget_max: event.target.value }))}
+                    placeholder="230000"
+                  />
+                </label>
+              </div>
+              <label>
+                购车周期
+                <input
+                  value={manualLead.purchase_timeline}
+                  onChange={(event) => setManualLead((current) => ({ ...current, purchase_timeline: event.target.value }))}
+                />
+              </label>
+              <label>
+                备注
+                <input
+                  value={manualLead.notes}
+                  onChange={(event) => setManualLead((current) => ({ ...current, notes: event.target.value }))}
+                />
+              </label>
+              <button type="submit" disabled={apiState === 'loading'}>
+                <Plus size={16} />
+                创建线索
+              </button>
+            </form>
+
+            <section className="record-card import-panel">
+              <div className="section-header compact">
+                <h2>CSV 导入</h2>
+                <Upload size={18} />
+              </div>
+              <div className="upload-box">
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => setLeadImportFile(event.target.files?.[0] || null)}
+                />
+                <strong>{leadImportFile?.name || '未选择文件'}</strong>
+                <p>支持字段：姓名、手机号、城市、意向车型、预算下限、预算上限、购车周期、评分、备注。</p>
+              </div>
+              <button className="text-action full-width" type="button" disabled={!leadImportFile || apiState === 'loading'} onClick={() => void uploadLeadImport()}>
+                <Upload size={16} />
+                导入线索
+              </button>
+              <div className="record-list">
+                {leadImports.slice(0, 5).map((job) => (
+                  <article className="timeline-row" key={job.id}>
+                    <div>
+                      <strong>{job.original_filename || `导入任务 ${job.id}`}</strong>
+                      <span>
+                        {labelText(job.status)} · {job.imported_rows}/{job.total_rows}
+                      </span>
+                      {job.error_message && <p>{job.error_message}</p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="record-card">
+              <div className="section-header compact">
+                <h2>最新线索</h2>
+                <span>{leads.length}</span>
+              </div>
+              <div className="record-list">
+                {leads.slice(0, 8).map((lead) => (
+                  <article className="timeline-row" key={lead.id}>
+                    <div>
+                      <strong>{lead.name || lead.phone}</strong>
+                      <span>
+                        {lead.intent_model || '意向待确认'} · {labelText(lead.status)} · {lead.score}
+                      </span>
+                      <p>{lead.phone} · {labelText(lead.city || lead.source_name || '-')}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
       )}
 
       {activeView === 'customers' && (
