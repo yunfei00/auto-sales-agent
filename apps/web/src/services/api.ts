@@ -142,6 +142,45 @@ export type TestDrive = {
   feedback: string
 }
 
+export type Order = {
+  id: number
+  order_number: string
+  customer: number
+  customer_name: string
+  quote: number | null
+  inventory: number
+  inventory_title: string
+  consultant_name: string
+  status: string
+  deposit_amount: string
+  paid_amount: string
+  total_amount: string
+  expected_delivery_date: string | null
+  delivered_at: string | null
+  notes: string
+  created_at: string
+}
+
+export type VehicleInventory = {
+  id: number
+  store: number
+  store_name: string
+  trim: number
+  trim_name: string
+  model_name: string
+  brand_name: string
+  title: string
+  vin: string
+  exterior_color: string
+  interior_color: string
+  status: string
+  arrival_date: string | null
+  listed_price: string | null
+  negotiable_price: string | null
+  mileage_km: number
+  notes: string
+}
+
 export type VehicleCard = {
   inventory_id: number
   vin: string
@@ -360,6 +399,22 @@ export function listCustomerTestDrives(customerId: number) {
   return getCollection<TestDrive>(`/api/sales/test-drives/?customer=${customerId}&ordering=-scheduled_at`)
 }
 
+export function listInventory() {
+  return getCollection<VehicleInventory>('/api/vehicles/inventory/?ordering=-updated_at')
+}
+
+export function listQuotes() {
+  return getCollection<Quote>('/api/sales/quotes/?ordering=-created_at')
+}
+
+export function listTestDrives() {
+  return getCollection<TestDrive>('/api/sales/test-drives/?ordering=-scheduled_at')
+}
+
+export function listOrders() {
+  return getCollection<Order>('/api/sales/orders/?ordering=-created_at')
+}
+
 export function createCustomerTask(customerId: number, title: string) {
   const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   return postJson<CustomerTask>('/api/customers/tasks/', {
@@ -414,6 +469,22 @@ export function createTestDrive(customerId: number, inventoryId: number) {
     inventory: inventoryId,
     scheduled_at: scheduledAt.toISOString(),
     status: 'booked',
+  })
+}
+
+export function createOrderFromQuote(quote: Quote) {
+  const expectedDelivery = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  return postJson<Order>('/api/sales/orders/', {
+    order_number: `AS${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}${quote.id}`,
+    customer: quote.customer,
+    quote: quote.id,
+    inventory: quote.inventory,
+    status: 'deposit_paid',
+    deposit_amount: '10000.00',
+    paid_amount: '10000.00',
+    total_amount: quote.landing_price,
+    expected_delivery_date: expectedDelivery,
+    notes: '由销售工作台报价单生成。',
   })
 }
 

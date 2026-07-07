@@ -1,11 +1,14 @@
 import {
   BadgeDollarSign,
+  BarChart3,
   CalendarClock,
   CarFront,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
+  FileText,
   Gauge,
+  LayoutDashboard,
   LogOut,
   MessageSquareText,
   PhoneCall,
@@ -13,7 +16,9 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  UsersRound,
   UserRound,
+  Warehouse,
 } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -27,14 +32,17 @@ import {
   type FollowupScriptResult,
   type Interaction,
   type Lead,
+  type Order,
   type Quote,
   type QuoteSuggestionResult,
   type TestDrive,
   type VehicleCard,
+  type VehicleInventory,
   type VehicleRecommendationResult,
   completeCustomerTask,
   createCustomerTask,
   createInteraction,
+  createOrderFromQuote,
   createQuoteFromSuggestion,
   createTestDrive,
   emptyFollowup,
@@ -47,7 +55,11 @@ import {
   listCustomerTasks,
   listCustomerTestDrives,
   listCustomers,
+  listInventory,
   listLeads,
+  listOrders,
+  listQuotes,
+  listTestDrives,
   login,
   logout,
   requestFollowupScript,
@@ -58,6 +70,7 @@ import {
 
 type LoadState = 'checking' | 'anonymous' | 'authenticated'
 type ApiState = 'ready' | 'loading' | 'error'
+type ActiveView = 'desk' | 'customers' | 'inventory' | 'sales' | 'dashboard'
 
 function money(value?: string | null) {
   if (!value) return '-'
@@ -201,10 +214,15 @@ function App() {
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [activeView, setActiveView] = useState<ActiveView>('desk')
 
   const [leads, setLeads] = useState<Lead[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
+  const [inventory, setInventory] = useState<VehicleInventory[]>([])
+  const [allQuotes, setAllQuotes] = useState<Quote[]>([])
+  const [allTestDrives, setAllTestDrives] = useState<TestDrive[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [tasks, setTasks] = useState<CustomerTask[]>([])
@@ -255,10 +273,22 @@ function App() {
   async function loadDesk() {
     setApiState('loading')
     setStatusText('正在加载销售流程')
-    const [leadList, customerList, summary] = await Promise.all([listLeads(), listCustomers(), getDashboardSummary()])
+    const [leadList, customerList, summary, inventoryList, quoteList, driveList, orderList] = await Promise.all([
+      listLeads(),
+      listCustomers(),
+      getDashboardSummary(),
+      listInventory(),
+      listQuotes(),
+      listTestDrives(),
+      listOrders(),
+    ])
     setLeads(leadList)
     setCustomers(customerList)
     setDashboardSummary(summary)
+    setInventory(inventoryList)
+    setAllQuotes(quoteList)
+    setAllTestDrives(driveList)
+    setOrders(orderList)
     const firstLead = leadList[0] || null
     const fallbackCustomer = customerList[0] || null
     await chooseLead(firstLead, fallbackCustomer)
@@ -333,6 +363,17 @@ function App() {
     setStatusText(customer ? `正在查看 ${labelText(customer.name)}` : '已选择线索')
   }
 
+  async function openCustomer(customer: Customer) {
+    setActiveView('desk')
+    setApiState('loading')
+    setSelectedLeadId(null)
+    setSelectedCustomer(customer)
+    await loadCustomerAssets(customer)
+    await refreshAi(customer, null)
+    setApiState('ready')
+    setStatusText(`正在查看 ${labelText(customer.name)}`)
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
@@ -378,8 +419,19 @@ function App() {
   }
 
   async function reloadCustomer(customerId: number) {
-    const [customer, summary] = await Promise.all([getCustomer(customerId), getDashboardSummary()])
+    const [customer, summary, quoteList, driveList, orderList, customerList] = await Promise.all([
+      getCustomer(customerId),
+      getDashboardSummary(),
+      listQuotes(),
+      listTestDrives(),
+      listOrders(),
+      listCustomers(),
+    ])
     setDashboardSummary(summary)
+    setAllQuotes(quoteList)
+    setAllTestDrives(driveList)
+    setOrders(orderList)
+    setCustomers(customerList)
     setSelectedCustomer(customer)
     await loadCustomerAssets(customer)
     return customer
@@ -391,6 +443,7 @@ function App() {
     try {
       const quote = await createQuoteFromSuggestion(selectedCustomer.id, quoteDraft)
       setQuotes((current) => [quote, ...current])
+      setAllQuotes((current) => [quote, ...current])
       await reloadCustomer(selectedCustomer.id)
       setApiState('ready')
       setStatusText('报价单已保存')
@@ -406,6 +459,7 @@ function App() {
     try {
       const testDrive = await createTestDrive(selectedCustomer.id, selectedCard.inventory_id)
       setTestDrives((current) => [testDrive, ...current])
+      setAllTestDrives((current) => [testDrive, ...current])
       await reloadCustomer(selectedCustomer.id)
       setApiState('ready')
       setStatusText(`已预约 ${dateTime(testDrive.scheduled_at)} 试驾`)
@@ -450,6 +504,25 @@ function App() {
     setStatusText('跟进记录已保存')
   }
 
+  async function generateOrder(quote: Quote) {
+    if (!quote.inventory) return
+    setApiState('loading')
+    try {
+      const order = await createOrderFromQuote(quote)
+      const summary = await getDashboardSummary()
+      setOrders((current) => [order, ...current])
+      setDashboardSummary(summary)
+      if (selectedCustomer?.id === quote.customer) {
+        await reloadCustomer(quote.customer)
+      }
+      setApiState('ready')
+      setStatusText('订单已生成')
+    } catch {
+      setApiState('error')
+      setStatusText('订单生成失败')
+    }
+  }
+
   const metrics = [
     {
       label: '今日线索',
@@ -476,6 +549,14 @@ function App() {
       tone: 'slate',
     },
   ]
+  const navItems = [
+    { id: 'desk' as const, label: '销售工作台', helper: '线索到成交', icon: LayoutDashboard, count: leads.length },
+    { id: 'customers' as const, label: '客户档案', helper: '画像与跟进', icon: UsersRound, count: customers.length },
+    { id: 'inventory' as const, label: '车辆资源', helper: '库存与车型', icon: Warehouse, count: inventory.length },
+    { id: 'sales' as const, label: '报价订单', helper: '试驾与订单', icon: FileText, count: allQuotes.length + orders.length },
+    { id: 'dashboard' as const, label: '数据看板', helper: '销售指标', icon: BarChart3, count: dashboardSummary?.sales.orders ?? 0 },
+  ]
+  const viewTitle = navItems.find((item) => item.id === activeView)?.label || '销售工作台'
 
   if (loadState !== 'authenticated') {
     return (
@@ -517,11 +598,48 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-frame">
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-mark">
+            <CarFront size={20} />
+          </div>
+          <div>
+            <strong>汽车销售智能体</strong>
+            <span>销售运营控制台</span>
+          </div>
+        </div>
+        <nav className="sidebar-nav" aria-label="主导航">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                type="button"
+                className={activeView === item.id ? 'active' : ''}
+                key={item.id}
+                onClick={() => setActiveView(item.id)}
+              >
+                <Icon size={18} />
+                <span>
+                  <strong>{item.label}</strong>
+                  <em>{item.helper}</em>
+                </span>
+                <b>{item.count}</b>
+              </button>
+            )
+          })}
+        </nav>
+        <div className="sidebar-footer">
+          <span>当前门店</span>
+          <strong>{labelText(user?.profile?.store_name || selectedCustomer?.store_name || '上海主门店')}</strong>
+        </div>
+      </aside>
+
+      <section className="app-shell">
       <header className="topbar">
         <div>
           <div className="eyebrow">汽车销售智能体</div>
-          <h1>汽车销售智能工作台</h1>
+          <h1>{viewTitle}</h1>
         </div>
         <div className="topbar-actions">
           <div className={`connection ${apiState}`}>
@@ -539,17 +657,19 @@ function App() {
         </div>
       </header>
 
-      <section className="metrics-grid" aria-label="销售指标">
-        {metrics.map((metric) => (
-          <article className={`metric metric-${metric.tone}`} key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-            <em>{metric.trend}</em>
-          </article>
-        ))}
-      </section>
+      {activeView === 'desk' && (
+        <>
+          <section className="metrics-grid" aria-label="销售指标">
+            {metrics.map((metric) => (
+              <article className={`metric metric-${metric.tone}`} key={metric.label}>
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+                <em>{metric.trend}</em>
+              </article>
+            ))}
+          </section>
 
-      <section className="workflow-grid">
+          <section className="workflow-grid">
         <aside className="lead-queue">
           <div className="section-header compact">
             <div>
@@ -832,6 +952,263 @@ function App() {
             </div>
           </section>
         </aside>
+          </section>
+        </>
+      )}
+
+      {activeView === 'customers' && (
+        <section className="page-panel">
+          <div className="section-header">
+            <div>
+              <h2>客户档案</h2>
+              <p>按成交概率排序，快速进入销售工作台继续跟进。</p>
+            </div>
+            <button className="text-action" type="button" onClick={() => void loadDesk()}>
+              <RefreshCw size={16} />
+              刷新
+            </button>
+          </div>
+          <div className="directory-grid">
+            {customers.map((customer) => (
+              <article className="record-card" key={customer.id}>
+                <div className="record-title">
+                  <div>
+                    <h3>{labelText(customer.name)}</h3>
+                    <p>{customer.phone || '-'} · {labelText(customer.city || customer.store_name)}</p>
+                  </div>
+                  <strong>{customer.deal_probability}</strong>
+                </div>
+                <div className="record-tags">
+                  <span>{labelText(customer.stage)}</span>
+                  {(customer.tags || []).slice(0, 3).map((tag) => (
+                    <span key={tag}>{labelText(tag)}</span>
+                  ))}
+                </div>
+                <dl className="compact-facts">
+                  <div>
+                    <dt>预算</dt>
+                    <dd>
+                      {customer.demand_profile?.budget_min && customer.demand_profile?.budget_max
+                        ? `${money(customer.demand_profile.budget_min)} - ${money(customer.demand_profile.budget_max)}`
+                        : '-'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>意向</dt>
+                    <dd>{customer.demand_profile?.preferred_models?.[0] || customer.demand_profile?.body_type || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>下一步</dt>
+                    <dd>{localizeText(customer.next_action) || '确认购车需求'}</dd>
+                  </div>
+                </dl>
+                <button className="text-action full-width" type="button" onClick={() => void openCustomer(customer)}>
+                  <UserRound size={16} />
+                  进入工作台
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeView === 'inventory' && (
+        <section className="page-panel">
+          <div className="section-header">
+            <div>
+              <h2>车辆资源</h2>
+              <p>查看现车、在途和已预留车辆，支撑推荐与试驾安排。</p>
+            </div>
+            <button className="text-action" type="button" onClick={() => void loadDesk()}>
+              <RefreshCw size={16} />
+              刷新
+            </button>
+          </div>
+          <div className="inventory-grid">
+            {inventory.map((vehicle) => (
+              <article className="record-card vehicle-resource" key={vehicle.id}>
+                <div className="record-title">
+                  <div>
+                    <h3>{vehicle.title}</h3>
+                    <p>{vehicle.vin}</p>
+                  </div>
+                  <CarFront size={24} />
+                </div>
+                <div className="record-tags">
+                  <span>{labelText(vehicle.status)}</span>
+                  <span>{labelText(vehicle.exterior_color)}</span>
+                  <span>{labelText(vehicle.interior_color)}</span>
+                </div>
+                <dl className="compact-facts">
+                  <div>
+                    <dt>门店</dt>
+                    <dd>{labelText(vehicle.store_name)}</dd>
+                  </div>
+                  <div>
+                    <dt>挂牌价</dt>
+                    <dd>{money(vehicle.listed_price)}</dd>
+                  </div>
+                  <div>
+                    <dt>可谈价</dt>
+                    <dd>{money(vehicle.negotiable_price)}</dd>
+                  </div>
+                  <div>
+                    <dt>里程</dt>
+                    <dd>{vehicle.mileage_km} km</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeView === 'sales' && (
+        <section className="page-panel">
+          <div className="section-header">
+            <div>
+              <h2>报价订单</h2>
+              <p>跟踪报价、试驾和订单，形成从推荐到成交的闭环。</p>
+            </div>
+            <button className="text-action" type="button" onClick={() => void loadDesk()}>
+              <RefreshCw size={16} />
+              刷新
+            </button>
+          </div>
+          <div className="sales-board">
+            <section>
+              <div className="section-header compact">
+                <h2>报价单</h2>
+                <span>{allQuotes.length}</span>
+              </div>
+              <div className="record-list">
+                {allQuotes.map((quote) => {
+                  const hasOrder = orders.some((order) => order.quote === quote.id)
+                  return (
+                    <article className="record-card compact-card" key={quote.id}>
+                      <div className="record-title">
+                        <div>
+                          <h3>{labelText(quote.customer_name)}</h3>
+                          <p>{quote.inventory_title || '车辆待确认'}</p>
+                        </div>
+                        <strong>{money(quote.landing_price)}</strong>
+                      </div>
+                      <div className="record-tags">
+                        <span>{labelText(quote.status)}</span>
+                        <span>{dateTime(quote.created_at)}</span>
+                      </div>
+                      <button
+                        className="text-action full-width"
+                        type="button"
+                        disabled={!quote.inventory || hasOrder}
+                        onClick={() => void generateOrder(quote)}
+                      >
+                        <FileText size={16} />
+                        {hasOrder ? '已生成订单' : '生成订单'}
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section>
+              <div className="section-header compact">
+                <h2>试驾预约</h2>
+                <span>{allTestDrives.length}</span>
+              </div>
+              <div className="record-list">
+                {allTestDrives.map((drive) => (
+                  <article className="record-card compact-card" key={drive.id}>
+                    <div className="record-title">
+                      <div>
+                        <h3>{labelText(drive.customer_name)}</h3>
+                        <p>{drive.inventory_title || '车辆待确认'}</p>
+                      </div>
+                      <CalendarClock size={22} />
+                    </div>
+                    <div className="record-tags">
+                      <span>{labelText(drive.status)}</span>
+                      <span>{dateTime(drive.scheduled_at)}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="section-header compact">
+                <h2>订单</h2>
+                <span>{orders.length}</span>
+              </div>
+              <div className="record-list">
+                {orders.map((order) => (
+                  <article className="record-card compact-card" key={order.id}>
+                    <div className="record-title">
+                      <div>
+                        <h3>{order.order_number}</h3>
+                        <p>{labelText(order.customer_name)} · {order.inventory_title}</p>
+                      </div>
+                      <strong>{money(order.total_amount)}</strong>
+                    </div>
+                    <div className="record-tags">
+                      <span>{labelText(order.status)}</span>
+                      <span>订金 {money(order.deposit_amount)}</span>
+                      <span>{order.expected_delivery_date || '交付待定'}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
+      )}
+
+      {activeView === 'dashboard' && (
+        <section className="page-panel">
+          <div className="section-header">
+            <div>
+              <h2>数据看板</h2>
+              <p>线索、待办、试驾、报价、订单和库存的实时运营摘要。</p>
+            </div>
+            <button className="text-action" type="button" onClick={() => void loadDesk()}>
+              <RefreshCw size={16} />
+              刷新
+            </button>
+          </div>
+          <section className="metrics-grid" aria-label="销售指标">
+            {metrics.map((metric) => (
+              <article className={`metric metric-${metric.tone}`} key={metric.label}>
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+                <em>{metric.trend}</em>
+              </article>
+            ))}
+          </section>
+          <div className="insight-grid">
+            <article className="insight-card">
+              <span>线索漏斗</span>
+              <strong>{dashboardSummary?.leads.total ?? 0}</strong>
+              <p>今日新增 {dashboardSummary?.leads.today ?? 0}，已转化 {dashboardSummary?.leads.converted ?? 0}</p>
+            </article>
+            <article className="insight-card">
+              <span>客户阶段</span>
+              <strong>{dashboardSummary?.customers.quoted ?? 0}</strong>
+              <p>已报价客户，预约试驾 {dashboardSummary?.customers.test_drive_booked ?? 0}</p>
+            </article>
+            <article className="insight-card">
+              <span>订单交付</span>
+              <strong>{dashboardSummary?.sales.orders ?? 0}</strong>
+              <p>已交付/完成 {dashboardSummary?.sales.delivered_orders ?? 0}</p>
+            </article>
+            <article className="insight-card">
+              <span>库存结构</span>
+              <strong>{dashboardSummary?.inventory.available ?? inventory.length}</strong>
+              <p>在途 {dashboardSummary?.inventory.in_transit ?? 0}，预留 {dashboardSummary?.inventory.reserved ?? 0}</p>
+            </article>
+          </div>
+        </section>
+      )}
       </section>
     </main>
   )
