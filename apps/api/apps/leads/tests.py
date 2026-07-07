@@ -38,7 +38,7 @@ class LeadCaptureTests(TestCase):
     def test_csv_import_creates_leads_and_records_job_counts(self):
         uploaded = SimpleUploadedFile(
             "leads.csv",
-            "姓名,手机号,城市,意向车型,预算下限,预算上限,购车周期,评分,备注\n"
+            "姓名,\ufeff手机号,城市,意向车型,预算下限,预算上限,购车周期,评分,备注\n"
             "导入客户,13900002002,上海,Nova X,18万,23万,本月,88,周末可试驾\n".encode("utf-8-sig"),
             content_type="text/csv",
         )

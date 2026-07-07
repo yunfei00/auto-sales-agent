@@ -27,6 +27,14 @@ def _value(row, field):
     return ""
 
 
+def _normalize_row(row):
+    normalized = {}
+    for key, value in row.items():
+        normalized_key = str(key or "").strip().lstrip("\ufeff")
+        normalized[normalized_key] = str(value or "").strip()
+    return normalized
+
+
 def _decimal(value):
     if not value:
         return None
@@ -76,6 +84,7 @@ def import_leads_from_csv(job: LeadImportJob, *, store=None, assigned_to=None) -
         errors: list[str] = []
 
         for row_number, row in enumerate(reader, start=2):
+            row = _normalize_row(row)
             total_rows += 1
             phone = _value(row, "phone")
             if not phone:
