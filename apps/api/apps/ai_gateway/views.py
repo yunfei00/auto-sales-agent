@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from .models import AIConversation, AIMessage, AIToolCall
@@ -36,7 +36,7 @@ class AIToolCallViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([AllowAny])
 def chat(request):
     serializer = ChatRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -98,7 +98,7 @@ def chat(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([AllowAny])
 def vehicle_recommendations(request):
     serializer = VehicleRecommendationRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -107,7 +107,7 @@ def vehicle_recommendations(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([AllowAny])
 def followup_script(request):
     serializer = FollowupScriptRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -116,7 +116,7 @@ def followup_script(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([AllowAny])
 def quote_suggestion(request):
     serializer = QuoteSuggestionRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

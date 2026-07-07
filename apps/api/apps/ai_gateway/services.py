@@ -142,6 +142,10 @@ def recommend_vehicles(
         model = trim.model
         series = model.series
         brand = series.brand
+        title_parts = [brand.name]
+        if not model.name.lower().startswith(series.name.lower()):
+            title_parts.append(series.name)
+        title_parts.extend([model.name, trim.name])
         policy = (
             SalesPolicy.objects.filter(store=vehicle.store, model=model, is_active=True)
             .order_by("-amount", "-created_at")
@@ -152,7 +156,7 @@ def recommend_vehicles(
                 "inventory_id": vehicle.id,
                 "vin": vehicle.vin,
                 "vehicle_model_id": model.id,
-                "title": f"{brand.name} {series.name} {model.name} {trim.name}",
+                "title": " ".join(title_parts),
                 "brand": brand.name,
                 "model": model.name,
                 "trim": trim.name,
