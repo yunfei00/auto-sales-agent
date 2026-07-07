@@ -308,33 +308,40 @@ class Command(BaseCommand):
         inventory = VehicleInventory.objects.filter(status=VehicleInventory.Status.AVAILABLE).first()
         if not inventory:
             return
-        TestDrive.objects.get_or_create(
-            customer=customer,
-            inventory=inventory,
-            defaults={
-                "scheduled_at": timezone.now() + timezone.timedelta(days=2),
-                "consultant": consultant,
-                "status": TestDrive.Status.BOOKED,
-            },
-        )
-        quote, _ = Quote.objects.get_or_create(
-            customer=customer,
-            inventory=inventory,
-            defaults={
-                "consultant": consultant,
-                "status": Quote.Status.DRAFT,
-                "bare_vehicle_price": inventory.listed_price or Decimal("0"),
-                "discount_amount": Decimal("6000.00"),
-                "tax_amount": Decimal("0.00"),
-                "insurance_amount": Decimal("5800.00"),
-                "license_fee": Decimal("1200.00"),
-                "accessory_amount": Decimal("3000.00"),
-                "finance_down_payment": Decimal("60000.00"),
-                "finance_monthly_payment": Decimal("3980.00"),
-                "landing_price": (inventory.listed_price or Decimal("0")) - Decimal("6000.00") + Decimal("10000.00"),
-                "ai_explanation": "基于演示现金优惠和金融意向生成的报价草案。",
-            },
-        )
+        test_drive = TestDrive.objects.filter(customer=customer, inventory=inventory).order_by("id").first()
+        if test_drive:
+            self._update_fields(
+                test_drive,
+                {
+                    "consultant": consultant,
+                },
+            )
+        else:
+            TestDrive.objects.create(
+                customer=customer,
+                inventory=inventory,
+                scheduled_at=timezone.now() + timezone.timedelta(days=2),
+                consultant=consultant,
+                status=TestDrive.Status.BOOKED,
+            )
+        quote = Quote.objects.filter(customer=customer, inventory=inventory).order_by("id").first()
+        if not quote:
+            quote = Quote.objects.create(
+                customer=customer,
+                inventory=inventory,
+                consultant=consultant,
+                status=Quote.Status.DRAFT,
+                bare_vehicle_price=inventory.listed_price or Decimal("0"),
+                discount_amount=Decimal("6000.00"),
+                tax_amount=Decimal("0.00"),
+                insurance_amount=Decimal("5800.00"),
+                license_fee=Decimal("1200.00"),
+                accessory_amount=Decimal("3000.00"),
+                finance_down_payment=Decimal("60000.00"),
+                finance_monthly_payment=Decimal("3980.00"),
+                landing_price=(inventory.listed_price or Decimal("0")) - Decimal("6000.00") + Decimal("10000.00"),
+                ai_explanation="基于演示现金优惠和金融意向生成的报价草案。",
+            )
         self._update_fields(
             quote,
             {
