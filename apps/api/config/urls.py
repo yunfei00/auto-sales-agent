@@ -19,6 +19,7 @@ urlpatterns = [
     path("", frontend_app, name="frontend-app"),
     path("api/health/", health_check, name="health-check"),
     path('admin/', admin.site.urls),
+    path("api/accounts/", include("apps.accounts.urls")),
     path("api/tenants/", include("apps.tenants.urls")),
     path("api/leads/", include("apps.leads.urls")),
     path("api/customers/", include("apps.customers.urls")),

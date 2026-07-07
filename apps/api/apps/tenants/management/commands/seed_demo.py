@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -5,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.customers.models import Customer, CustomerTask, DemandProfile, Interaction
+from apps.accounts.models import UserProfile
 from apps.leads.models import Lead, LeadSource
 from apps.sales.models import Quote, TestDrive
 from apps.tenants.models import Store, Tenant
@@ -35,6 +37,14 @@ class Command(BaseCommand):
         consultant, _ = User.objects.get_or_create(
             username="sales_demo",
             defaults={"first_name": "Sales", "last_name": "Demo", "email": "sales@example.com"},
+        )
+        demo_password = os.getenv("SALES_DEMO_PASSWORD")
+        if demo_password:
+            consultant.set_password(demo_password)
+            consultant.save(update_fields=["password"])
+        UserProfile.objects.get_or_create(
+            user=consultant,
+            defaults={"tenant": tenant, "store": store, "role": UserProfile.Role.SALES_CONSULTANT},
         )
 
         web_source, _ = LeadSource.objects.get_or_create(
