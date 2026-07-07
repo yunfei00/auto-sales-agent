@@ -14,9 +14,11 @@ This document records the target deployment environment for the automotive sales
 | External URL | `http://111.228.9.40:58900/` |
 | Admin URL | `http://111.228.9.40:58900/admin/` |
 | External port | `58900` |
-| Internal app port | `7860` |
+| Gateway listen port | `7860` |
+| App host port on this server | `7861` |
+| Container app port | `7860` |
 
-The server maps external port `58900` to internal port `7860`, so the application container should listen on `7860`.
+The server maps external port `58900` to a gateway listening on `127.0.0.1:7860`. That gateway forwards the root application to `127.0.0.1:7861`, so this deployment should publish the Django container as `127.0.0.1:7861 -> 7860`.
 
 ## Sensitive Access Notes
 
@@ -85,7 +87,8 @@ The current deployable shape is a single Django container:
 
 For the Django backend, the production container should:
 
-- Serve API and admin on port `7860`.
+- Serve API and admin on container port `7860`.
+- Publish to host `127.0.0.1:7861` on the target server using `APP_HOST_BIND=127.0.0.1` and `APP_HOST_PORT=7861`.
 - Serve the React workbench at `/`.
 - Use PostgreSQL for persistent data.
 - Use Redis for Celery and cache.

@@ -18,3 +18,5 @@ python manage.py runserver 0.0.0.0:7860
 ```
 
 Docker entrypoint listens on internal port `7860`, matching the target deployment mapping.
+
+For Docker deployments, `APP_HOST_PORT` controls the host port and defaults to `7860`. On the target cloud server, set `APP_HOST_BIND=127.0.0.1` and `APP_HOST_PORT=7861` so the existing `58900 -> 7860` gateway can proxy to the app.
