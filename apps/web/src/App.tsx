@@ -34,6 +34,8 @@ import {
   completeCustomerTask,
   createCustomerTask,
   createInteraction,
+  createQuoteFromSuggestion,
+  createTestDrive,
   emptyFollowup,
   emptyRecommendation,
   getCustomer,
@@ -143,6 +145,9 @@ const textLabels: Record<string, string> = {
   Black: '黑色',
   'Invite weekend test drive': '邀约周末试驾',
   '邀约周末试驾': '邀约周末试驾',
+  '试驾前确认到店时间': '试驾前确认到店时间',
+  '发送报价并确认订金意向': '发送报价并确认订金意向',
+  '推进合同签署和交付准备': '推进合同签署和交付准备',
   'Qualify demand': '确认购车需求',
   'Follow up customer': '跟进客户',
   'family commute and weekend trips': '家庭通勤与周末出行',
@@ -368,21 +373,76 @@ function App() {
     setQuoteDraft(await requestQuoteSuggestion(card.inventory_id, selectedCustomer?.id))
   }
 
+  async function reloadCustomer(customerId: number) {
+    const customer = await getCustomer(customerId)
+    setSelectedCustomer(customer)
+    await loadCustomerAssets(customer)
+    return customer
+  }
+
+  async function saveQuoteDraft() {
+    if (!selectedCustomer || !quoteDraft) return
+    setApiState('loading')
+    try {
+      const quote = await createQuoteFromSuggestion(selectedCustomer.id, quoteDraft)
+      setQuotes((current) => [quote, ...current])
+      await reloadCustomer(selectedCustomer.id)
+      setApiState('ready')
+      setStatusText('报价单已保存')
+    } catch {
+      setApiState('error')
+      setStatusText('报价保存失败')
+    }
+  }
+
+  async function bookTestDrive() {
+    if (!selectedCustomer || !selectedCard) return
+    setApiState('loading')
+    try {
+      const testDrive = await createTestDrive(selectedCustomer.id, selectedCard.inventory_id)
+      setTestDrives((current) => [testDrive, ...current])
+      await reloadCustomer(selectedCustomer.id)
+      setApiState('ready')
+      setStatusText(`已预约 ${dateTime(testDrive.scheduled_at)} 试驾`)
+    } catch {
+      setApiState('error')
+      setStatusText('试驾预约失败')
+    }
+  }
+
+  async function logPhoneCall() {
+    if (!selectedCustomer) return
+    setApiState('loading')
+    try {
+      const summary = `电话联系客户：${followup.script}`
+      const interaction = await createInteraction(selectedCustomer.id, summary, 'phone')
+      setInteractions((current) => [interaction, ...current])
+      setApiState('ready')
+      setStatusText('电话跟进已记录')
+    } catch {
+      setApiState('error')
+      setStatusText('电话记录失败')
+    }
+  }
+
   async function addFollowupTask() {
     if (!selectedCustomer) return
     const task = await createCustomerTask(selectedCustomer.id, localizeText(selectedCustomer.next_action) || '跟进客户')
     setTasks((current) => [task, ...current])
+    setStatusText('待办已创建')
   }
 
   async function markDone(task: CustomerTask) {
     const updated = await completeCustomerTask(task.id)
     setTasks((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    setStatusText('待办已完成')
   }
 
   async function logFollowup() {
     if (!selectedCustomer) return
     const interaction = await createInteraction(selectedCustomer.id, followup.script)
     setInteractions((current) => [interaction, ...current])
+    setStatusText('跟进记录已保存')
   }
 
   const metrics = [
@@ -649,6 +709,16 @@ function App() {
                 </div>
               </dl>
               <p>{localizeText(quoteDraft?.explanation || latestQuote?.ai_explanation) || '报价草案待生成。'}</p>
+              <div className="quote-actions">
+                <button type="button" disabled={!selectedCustomer || !quoteDraft} onClick={() => void saveQuoteDraft()}>
+                  <BadgeDollarSign size={16} />
+                  保存报价
+                </button>
+                <button type="button" disabled={!selectedCustomer || !selectedCard} onClick={() => void bookTestDrive()}>
+                  <CalendarClock size={16} />
+                  预约试驾
+                </button>
+              </div>
             </div>
           </section>
         </section>
@@ -668,13 +738,13 @@ function App() {
               ))}
             </ul>
             <div className="profile-actions">
-              <button type="button" title="拨打客户电话" disabled={!selectedCustomer}>
+              <button type="button" title="拨打客户电话" disabled={!selectedCustomer} onClick={() => void logPhoneCall()}>
                 <PhoneCall size={17} />
               </button>
               <button type="button" title="新增任务" disabled={!selectedCustomer} onClick={() => void addFollowupTask()}>
                 <ClipboardList size={17} />
               </button>
-              <button type="button" title="预约试驾" disabled={!selectedCustomer}>
+              <button type="button" title="预约试驾" disabled={!selectedCustomer || !selectedCard} onClick={() => void bookTestDrive()}>
                 <CalendarClock size={17} />
               </button>
             </div>

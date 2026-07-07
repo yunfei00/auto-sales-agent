@@ -351,6 +351,36 @@ export function createInteraction(customerId: number, summary: string, channel =
   })
 }
 
+export function createQuoteFromSuggestion(customerId: number, draft: QuoteSuggestionResult) {
+  return postJson<Quote>('/api/sales/quotes/', {
+    customer: customerId,
+    inventory: draft.inventory_id,
+    status: 'draft',
+    bare_vehicle_price: draft.bare_vehicle_price,
+    discount_amount: draft.discount_amount,
+    tax_amount: '0.00',
+    insurance_amount: draft.insurance_amount,
+    license_fee: draft.license_fee,
+    accessory_amount: draft.accessory_amount,
+    finance_down_payment: draft.finance_down_payment,
+    finance_monthly_payment: draft.finance_monthly_payment,
+    landing_price: draft.landing_price,
+    ai_explanation: draft.explanation,
+    notes: 'AI 生成报价草案，等待销售顾问确认。',
+  })
+}
+
+export function createTestDrive(customerId: number, inventoryId: number) {
+  const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  scheduledAt.setHours(10, 0, 0, 0)
+  return postJson<TestDrive>('/api/sales/test-drives/', {
+    customer: customerId,
+    inventory: inventoryId,
+    scheduled_at: scheduledAt.toISOString(),
+    status: 'booked',
+  })
+}
+
 export function requestVehicleRecommendations(message: string, customerId?: number | null) {
   return postJson<VehicleRecommendationResult>('/api/ai/recommendations/vehicles/', {
     message,

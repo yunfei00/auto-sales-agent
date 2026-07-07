@@ -637,6 +637,27 @@ button:disabled {
   font-weight: 700;
 }
 
+.quote-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quote-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cbd6e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #31506d;
+  font-size: 13px;
+}
+
 .profile-actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -765,6 +786,10 @@ button:disabled {
   }
 
   .vehicle-card {
+    grid-template-columns: 1fr;
+  }
+
+  .quote-actions {
     grid-template-columns: 1fr;
   }
 
