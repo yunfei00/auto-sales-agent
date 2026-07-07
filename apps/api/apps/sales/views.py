@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 
+from common.security import apply_user_scope
 from apps.customers.models import Customer
 
 from .models import Order, Quote, TestDrive
@@ -25,6 +26,14 @@ class TestDriveViewSet(viewsets.ModelViewSet):
     search_fields = ("customer__name", "inventory__vin", "feedback")
     ordering_fields = ("scheduled_at", "created_at")
 
+    def get_queryset(self):
+        return apply_user_scope(
+            super().get_queryset(),
+            self.request.user,
+            tenant_path="customer__tenant",
+            store_path="customer__store",
+        )
+
     def perform_create(self, serializer):
         test_drive = serializer.save(consultant=_request_user(self.request))
         Customer.objects.filter(pk=test_drive.customer_id).update(
@@ -49,6 +58,14 @@ class QuoteViewSet(viewsets.ModelViewSet):
     search_fields = ("customer__name", "inventory__vin", "ai_explanation", "notes")
     ordering_fields = ("created_at", "landing_price")
 
+    def get_queryset(self):
+        return apply_user_scope(
+            super().get_queryset(),
+            self.request.user,
+            tenant_path="customer__tenant",
+            store_path="customer__store",
+        )
+
     def perform_create(self, serializer):
         quote = serializer.save(consultant=_request_user(self.request))
         Customer.objects.filter(pk=quote.customer_id).update(
@@ -72,6 +89,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     filterset_fields = ("customer", "inventory", "consultant", "status")
     search_fields = ("order_number", "customer__name", "inventory__vin", "notes")
     ordering_fields = ("created_at", "expected_delivery_date", "total_amount")
+
+    def get_queryset(self):
+        return apply_user_scope(
+            super().get_queryset(),
+            self.request.user,
+            tenant_path="customer__tenant",
+            store_path="customer__store",
+        )
 
     def perform_create(self, serializer):
         order = serializer.save(consultant=_request_user(self.request))

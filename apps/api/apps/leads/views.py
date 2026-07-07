@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 
+from common.security import apply_user_scope
 from apps.tenants.models import Tenant
 
 from .models import Lead, LeadImportJob, LeadSource
@@ -48,6 +49,9 @@ class LeadImportJobViewSet(viewsets.ModelViewSet):
     filterset_fields = ("tenant", "source", "status")
     ordering_fields = ("created_at", "status")
 
+    def get_queryset(self):
+        return apply_user_scope(super().get_queryset(), self.request.user, tenant_path="tenant", store_path=None)
+
     def perform_create(self, serializer):
         user = _request_user(self.request)
         tenant = serializer.validated_data.get("tenant") or _default_tenant(self.request)
@@ -74,6 +78,9 @@ class LeadViewSet(viewsets.ModelViewSet):
     filterset_fields = ("tenant", "store", "source", "status", "assigned_to")
     search_fields = ("name", "phone", "intent_model", "notes")
     ordering_fields = ("created_at", "score", "updated_at")
+
+    def get_queryset(self):
+        return apply_user_scope(super().get_queryset(), self.request.user)
 
     def perform_create(self, serializer):
         user = _request_user(self.request)

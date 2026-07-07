@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from rest_framework import serializers
 
 from apps.tenants.models import Store, Tenant
@@ -14,11 +17,30 @@ class LeadSourceSerializer(serializers.ModelSerializer):
 class LeadImportJobSerializer(serializers.ModelSerializer):
     tenant = serializers.PrimaryKeyRelatedField(queryset=Tenant.objects.all(), required=False)
     source = serializers.PrimaryKeyRelatedField(queryset=LeadSource.objects.all(), required=False, allow_null=True)
+    allowed_content_types = {
+        "application/csv",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "text/plain",
+    }
 
     class Meta:
         model = LeadImportJob
         fields = "__all__"
         read_only_fields = ("created_by", "total_rows", "imported_rows", "error_message")
+
+    def validate_file(self, uploaded_file):
+        max_bytes = settings.MAX_CSV_IMPORT_BYTES
+        filename = getattr(uploaded_file, "name", "")
+        suffix = Path(filename).suffix.lower()
+        content_type = getattr(uploaded_file, "content_type", "")
+
+        if uploaded_file.size > max_bytes:
+            max_mb = max_bytes / 1024 / 1024
+            raise serializers.ValidationError(f"CSV 文件不能超过 {max_mb:.1f} MB。")
+        if suffix != ".csv" and content_type not in self.allowed_content_types:
+            raise serializers.ValidationError("仅支持 CSV 格式的线索文件。")
+        return uploaded_file
 
 
 class LeadSerializer(serializers.ModelSerializer):

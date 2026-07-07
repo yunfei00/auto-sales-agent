@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from apps.accounts.models import UserProfile
@@ -37,3 +37,38 @@ class SessionApiTests(TestCase):
         response = self.client.post(reverse("account-logout"))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["authenticated"])
+
+    def test_login_requires_csrf_when_csrf_checks_are_enforced(self):
+        secure_client = Client(enforce_csrf_checks=True)
+        login_payload = {"username": "consultant", "password": "Passw0rd!234"}
+
+        response = secure_client.post(
+            reverse("account-login"),
+            login_payload,
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+        session_response = secure_client.get(reverse("current-session"))
+        csrf_token = session_response.json()["csrf_token"]
+        response = secure_client.post(
+            reverse("account-login"),
+            login_payload,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        self.assertEqual(response.status_code, 200)
+        csrf_token = response.json()["csrf_token"]
+
+        response = secure_client.post(
+            reverse("account-logout"),
+            {},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_anonymous_business_api_read_is_denied(self):
+        response = self.client.get("/api/leads/")
+
+        self.assertEqual(response.status_code, 403)

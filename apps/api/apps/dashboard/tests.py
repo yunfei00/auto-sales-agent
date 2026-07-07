@@ -1,8 +1,10 @@
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.accounts.models import UserProfile
 from apps.customers.models import Customer, CustomerTask
 from apps.leads.models import Lead
 from apps.sales.models import Quote, TestDrive
@@ -12,17 +14,24 @@ from apps.vehicles.models import Brand, VehicleInventory, VehicleModel, VehicleS
 
 class DashboardSummaryTests(TestCase):
     def setUp(self):
-        tenant = Tenant.objects.create(name="演示集团", code="demo-dashboard")
-        store = Store.objects.create(tenant=tenant, name="上海门店", code="dashboard-sh", city="上海")
+        self.user = get_user_model().objects.create_user(username="dashboard", password="Passw0rd!234")
+        self.client.login(username="dashboard", password="Passw0rd!234")
+        tenant = Tenant.objects.create(name="Demo Group", code="demo-dashboard")
+        store = Store.objects.create(tenant=tenant, name="Shanghai Store", code="dashboard-sh", city="Shanghai")
+        UserProfile.objects.create(
+            user=self.user,
+            tenant=tenant,
+            store=store,
+            role=UserProfile.Role.SALES_MANAGER,
+        )
         self.customer = Customer.objects.create(
             tenant=tenant,
             store=store,
-            name="演示客户",
+            name="Demo Customer",
             phone="13800000001",
             stage=Customer.Stage.QUOTED,
         )
-        Brand.objects.create(name="Aster", code="dashboard-aster")
-        brand = Brand.objects.get(code="dashboard-aster")
+        brand = Brand.objects.create(name="Aster", code="dashboard-aster")
         series = VehicleSeries.objects.create(brand=brand, name="Nova")
         model = VehicleModel.objects.create(series=series, name="Nova X", model_year=2026)
         trim = VehicleTrim.objects.create(model=model, name="Pro", official_price=Decimal("198800.00"))
@@ -32,10 +41,10 @@ class DashboardSummaryTests(TestCase):
             vin="DASHBOARDVIN00001",
             listed_price=Decimal("198800.00"),
         )
-        Lead.objects.create(tenant=tenant, store=store, name="高意向客户", phone="13900000001", score=88)
+        Lead.objects.create(tenant=tenant, store=store, name="High Intent Customer", phone="13900000001", score=88)
         CustomerTask.objects.create(
             customer=self.customer,
-            title="回访客户",
+            title="Follow up customer",
             due_at=timezone.now() - timezone.timedelta(hours=1),
             status=CustomerTask.Status.OPEN,
         )

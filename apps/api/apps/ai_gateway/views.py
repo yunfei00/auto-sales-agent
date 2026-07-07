@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import AIConversation, AIMessage, AIToolCall
@@ -22,9 +22,14 @@ class AIConversationViewSet(viewsets.ModelViewSet):
     search_fields = ("title", "context_type", "context_id")
     ordering_fields = ("created_at", "updated_at")
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.user.is_superuser:
+            return queryset
+        return queryset.filter(user=self.request.user)
+
     def perform_create(self, serializer):
-        user = self.request.user if self.request.user.is_authenticated else None
-        serializer.save(user=user)
+        serializer.save(user=self.request.user)
 
 
 class AIToolCallViewSet(viewsets.ReadOnlyModelViewSet):
@@ -34,9 +39,15 @@ class AIToolCallViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ("tool_name", "error_message")
     ordering_fields = ("created_at", "duration_ms")
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.user.is_superuser:
+            return queryset
+        return queryset.filter(message__conversation__user=self.request.user)
+
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def chat(request):
     serializer = ChatRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -44,12 +55,15 @@ def chat(request):
     conversation = None
 
     if serializer.validated_data.get("conversation_id"):
-        conversation = AIConversation.objects.filter(id=serializer.validated_data["conversation_id"]).first()
+        conversations = AIConversation.objects.all()
+        if not request.user.is_superuser:
+            conversations = conversations.filter(user=request.user)
+        conversation = conversations.filter(id=serializer.validated_data["conversation_id"]).first()
 
     if conversation is None:
         title = message[:80]
         conversation = AIConversation.objects.create(
-            user=request.user if request.user.is_authenticated else None,
+            user=request.user,
             title=title,
             context_type=serializer.validated_data.get("context_type", ""),
             context_id=serializer.validated_data.get("context_id", ""),
@@ -98,7 +112,7 @@ def chat(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def vehicle_recommendations(request):
     serializer = VehicleRecommendationRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -107,7 +121,7 @@ def vehicle_recommendations(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def followup_script(request):
     serializer = FollowupScriptRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -116,7 +130,7 @@ def followup_script(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def quote_suggestion(request):
     serializer = QuoteSuggestionRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

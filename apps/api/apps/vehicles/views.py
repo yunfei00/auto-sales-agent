@@ -1,5 +1,7 @@
 from rest_framework import viewsets
 
+from common.security import apply_user_scope
+
 from .models import Brand, SalesPolicy, VehicleInventory, VehicleModel, VehicleSeries, VehicleTrim
 from .serializers import (
     BrandSerializer,
@@ -53,6 +55,9 @@ class VehicleInventoryViewSet(viewsets.ModelViewSet):
     search_fields = ("vin", "trim__name", "trim__model__name", "notes")
     ordering_fields = ("arrival_date", "listed_price", "updated_at")
 
+    def get_queryset(self):
+        return apply_user_scope(super().get_queryset(), self.request.user, tenant_path="store__tenant")
+
 
 class SalesPolicyViewSet(viewsets.ModelViewSet):
     queryset = SalesPolicy.objects.select_related("store", "model").all()
@@ -60,5 +65,8 @@ class SalesPolicyViewSet(viewsets.ModelViewSet):
     filterset_fields = ("store", "model", "policy_type", "is_active")
     search_fields = ("title", "description", "model__name")
     ordering_fields = ("start_date", "end_date", "amount", "created_at")
+
+    def get_queryset(self):
+        return apply_user_scope(super().get_queryset(), self.request.user, tenant_path="store__tenant")
 
 # Create your views here.

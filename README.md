@@ -8,6 +8,7 @@ AI agent product for automotive sales teams, helping sales consultants analyze l
 - [System architecture](docs/system-architecture.md)
 - [Current status and next tasks](docs/current-status-and-next-tasks.md)
 - [Deployment environment](docs/deployment-environment.md)
+- [Security mechanisms](docs/security-mechanisms.md)
 
 ## Development
 
