@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.conf import settings
 from django.http import FileResponse
-from django.shortcuts import redirect
+from django.http import HttpResponseNotFound
 from django.urls import include, path
 
 
@@ -18,7 +18,7 @@ def frontend_app(_request):
 
 
 def frontend_entry(_request):
-    return redirect("/car")
+    return HttpResponseNotFound()
 
 
 urlpatterns = [

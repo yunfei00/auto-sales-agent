@@ -14,6 +14,8 @@ This document records the target deployment environment for the automotive sales
 | External URL | `http://111.228.9.40:58900/car` |
 | Admin URL | `http://111.228.9.40:58900/admin/` |
 | External port | `58900` |
+
+The frontend is intentionally exposed only under `/car`. The bare root URL `http://111.228.9.40:58900/` should return 404 and must not redirect to the application entry.
 | Gateway listen port | `7860` |
 | App host port on this server | `7861` |
 | Container app port | `7860` |

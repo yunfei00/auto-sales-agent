@@ -5,11 +5,11 @@ from django.test import SimpleTestCase, override_settings
 
 
 class FrontendRoutingTests(SimpleTestCase):
-    def test_root_redirects_to_car_entry(self):
+    def test_root_does_not_expose_frontend_entry(self):
         response = self.client.get("/")
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/car")
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response)
 
     def test_car_entry_serves_frontend_index(self):
         with TemporaryDirectory() as tmpdir:
