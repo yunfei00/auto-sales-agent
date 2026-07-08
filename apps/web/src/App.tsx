@@ -778,7 +778,7 @@ function App() {
       action: '查看排名',
     },
     {
-      id: 'training' as const,
+      id: 'myTraining' as const,
       title: '开始培训学习',
       description: '进入训练任务，提升销售话术、客户诊断和跟进能力。',
       icon: BookOpen,
@@ -850,6 +850,254 @@ function App() {
   const activeModule = modulePages[activeView]
   const ActiveModuleIcon = activeModule?.icon
   const viewTitle = navItems.find((item) => item.id === activeView)?.label || trainingNavItems.find((item) => item.id === activeView)?.label || '工作台'
+  const trainingViewIds: ActiveView[] = ['training', 'trainingManage', 'trainingStats', 'myTraining', 'trainingRecords']
+  const isTrainingView = trainingViewIds.includes(activeView)
+  const trainingPrograms = [
+    {
+      title: 'Aster Nova X 价值传递训练',
+      description: '围绕新能源 SUV 的价格、续航、智能座舱与金融方案，训练顾问完整解释客户关注点。',
+      questions: '10 题',
+      status: '启用',
+      level: '专业严谨',
+    },
+    {
+      title: 'Deepvision 销售沟通培训',
+      description: '通过标准问答和追问练习，帮助销售建立顾问式沟通的底层结构。',
+      questions: '15 题',
+      status: '启用',
+      level: '专业严谨',
+    },
+    {
+      title: '私域运营系统培训',
+      description: '训练销售在私域触达、客户分层、活动邀约和售后回访中的表达方式。',
+      questions: '11 题',
+      status: '启用',
+      level: '专业严谨',
+    },
+  ]
+  const trainingRecords = [
+    { title: 'Aster Nova X 价值传递训练', state: '已完成', duration: '28秒 · 2条对话', time: '2026-07-08 09:20', score: '86/100' },
+    { title: 'Deepvision 销售沟通培训', state: '已完成', duration: '27秒 · 2条对话', time: '2026-07-07 11:11', score: '0/100' },
+    { title: '私域运营系统培训', state: '学习中', duration: '1分钟 · 2条对话', time: '2026-07-07 14:18', score: '0/100' },
+    { title: 'Aster Nova X 试驾邀约训练', state: '已完成', duration: '42秒 · 2条对话', time: '2026-07-06 14:23', score: '92/100' },
+    { title: 'Deepvision 销售实战：报价异议', state: '已完成', duration: '0分钟 · 0条对话', time: '2026-07-05 10:37', score: '10/100' },
+    { title: 'Deepvision 销售沟通培训', state: '已完成', duration: '24秒 · 2条对话', time: '2026-07-05 10:40', score: '0/100' },
+    { title: '私域运营系统培训', state: '已完成', duration: '33秒 · 4条对话', time: '2026-07-04 14:34', score: '2/100' },
+    { title: 'Aster Nova X 家庭客户跟进', state: '学习中', duration: '1分钟 · 2条对话', time: '2026-07-03 15:03', score: '76/100' },
+  ]
+  const activeTrainingView = activeView === 'training' ? 'myTraining' : activeView
+  const renderTrainingContent = () => {
+    if (activeTrainingView === 'trainingStats') {
+      return (
+        <section className="training-video-page">
+          <div className="training-page-heading">
+            <div>
+              <h2>培训统计</h2>
+              <p>查看团队学习进度、训练完成情况和考核结果。</p>
+            </div>
+            <button type="button">导出报告</button>
+          </div>
+          <div className="training-stats-grid">
+            {[
+              ['86%', '完成率', '较上周 +12%'],
+              ['117%', '学习活跃', '本月训练次数'],
+              ['100%', '启用课程', '3 个智能体'],
+              ['43%', '待提升', '低分训练占比'],
+            ].map(([value, label, hint]) => (
+              <article className="training-stat-card" key={label}>
+                <strong>{value}</strong>
+                <span>{label}</span>
+                <p>{hint}</p>
+              </article>
+            ))}
+          </div>
+          <div className="training-analytics-grid">
+            <article className="training-panel training-chart-panel">
+              <div className="training-panel-header">
+                <div>
+                  <h3>训练完成趋势</h3>
+                  <p>近 7 天学习和考试完成情况</p>
+                </div>
+              </div>
+              <div className="training-bars" aria-hidden="true">
+                {[42, 58, 36, 72, 64, 86, 78].map((height, index) => (
+                  <span style={{ height: `${height}%` }} key={index} />
+                ))}
+              </div>
+            </article>
+            <article className="training-panel">
+              <div className="training-panel-header">
+                <div>
+                  <h3>低分训练排行</h3>
+                  <p>优先安排主管复盘和二次演练</p>
+                </div>
+              </div>
+              <div className="training-rank-list">
+                {trainingRecords.slice(0, 5).map((record, index) => (
+                  <div key={`${record.title}-${record.time}`}>
+                    <b>{index + 1}</b>
+                    <span>{record.title}</span>
+                    <strong>{record.score}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      )
+    }
+
+    if (activeTrainingView === 'trainingRecords') {
+      return (
+        <section className="training-video-page">
+          <div className="training-page-heading">
+            <div>
+              <h2>培训记录</h2>
+              <p>查看历史训练记录、答题结果和改进建议。</p>
+            </div>
+            <button type="button">全部记录</button>
+          </div>
+          <div className="training-record-grid">
+            {trainingRecords.map((record) => (
+              <article className="training-record-card" key={`${record.title}-${record.time}`}>
+                <div className="training-record-title">
+                  <h3>{record.title}</h3>
+                  <span className={record.state === '学习中' ? 'learning' : ''}>{record.state}</span>
+                </div>
+                <p>{record.duration}</p>
+                <div className="training-record-meta">
+                  <span>{record.time}</span>
+                  <b>{record.score}</b>
+                </div>
+                <div className="training-record-actions">
+                  <button type="button">回看对话</button>
+                  <button type="button">查看结果</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    if (activeTrainingView === 'trainingManage') {
+      return (
+        <section className="training-video-page">
+          <div className="training-page-heading">
+            <div>
+              <h2>培训管理</h2>
+              <p>配置培训基础信息、考试规则和题库。</p>
+            </div>
+            <button type="button">新建培训</button>
+          </div>
+          <div className="training-summary-grid">
+            <article>
+              <strong>{trainingPrograms.length}</strong>
+              <span>启用培训</span>
+            </article>
+            <article>
+              <strong>36</strong>
+              <span>题库题目</span>
+            </article>
+            <article>
+              <strong>{trainingAnswers}</strong>
+              <span>答题次数</span>
+            </article>
+          </div>
+          <article className="training-panel">
+            <div className="training-panel-header">
+              <div>
+                <h3>培训列表</h3>
+                <p>新建培训后，在详情页维护考试规则和题库。</p>
+              </div>
+              <button type="button">新建培训</button>
+            </div>
+            <div className="training-search-row">
+              <div>搜索名称、编码、简介</div>
+              <button type="button">全部状态</button>
+            </div>
+            <div className="training-program-grid">
+              {trainingPrograms.map((program) => (
+                <article className="training-program-card" key={program.title}>
+                  <div className="training-program-head">
+                    <h3>{program.title}</h3>
+                    <span>{program.status}</span>
+                  </div>
+                  <p>{program.description}</p>
+                  <div className="training-card-footer">
+                    <span>{program.questions}</span>
+                    <b>{program.level}</b>
+                  </div>
+                  <button type="button">点击进入编辑</button>
+                </article>
+              ))}
+            </div>
+          </article>
+        </section>
+      )
+    }
+
+    return (
+      <section className="training-video-page">
+        <div className="training-page-heading">
+          <div>
+            <h2>我的培训</h2>
+            <p>继续未完成学习，或回看已完成的对话。</p>
+          </div>
+          <button type="button">全部记录</button>
+        </div>
+        <div className="training-course-grid">
+          {trainingPrograms.map((program, index) => (
+            <article className="training-course-card" key={program.title}>
+              <h3>{program.title}</h3>
+              <p>{program.description}</p>
+              <div className="training-course-tags">
+                <span>{program.questions}</span>
+                <span>AI 老师</span>
+                <span>{index === 0 ? '86/100' : '0/100'}</span>
+              </div>
+              <div className="training-result-box">
+                <span>{index === 2 ? '学习中' : '已完成'}</span>
+                <b>{index === 0 ? '2026-07-08 09:20' : '2026-07-07 11:11'}</b>
+                <p>{index === 2 ? '1分钟 · 2条对话' : '28秒 · 2条对话'}</p>
+              </div>
+              <div className="training-record-actions">
+                <button type="button" className="primary">开始学习</button>
+                <button type="button">直接考试</button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <section className="training-panel">
+          <div className="training-panel-header">
+            <div>
+              <h3>最近学习</h3>
+              <p>继续未完成学习，或回看已完成的对话</p>
+            </div>
+          </div>
+          <div className="training-record-grid compact">
+            {trainingRecords.slice(0, 4).map((record) => (
+              <article className="training-record-card" key={`${record.title}-${record.time}`}>
+                <div className="training-record-title">
+                  <h3>{record.title}</h3>
+                  <span className={record.state === '学习中' ? 'learning' : ''}>{record.state}</span>
+                </div>
+                <p>{record.duration}</p>
+                <div className="training-record-meta">
+                  <span>{record.time}</span>
+                  <b>{record.score}</b>
+                </div>
+                <div className="training-record-actions">
+                  <button type="button">回看对话</button>
+                  <button type="button">查看结果</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+    )
+  }
 
   if (loadState !== 'authenticated') {
     return (
@@ -930,7 +1178,7 @@ function App() {
                 <button
                   type="button"
                   className={activeView === item.id || isTrainingActive ? 'active' : ''}
-                  onClick={() => setActiveView(item.id)}
+                  onClick={() => setActiveView(item.id === 'training' ? 'myTraining' : item.id)}
                 >
                   <Icon size={18} />
                   <span>
@@ -943,7 +1191,7 @@ function App() {
                     {trainingNavItems.map((subItem) => (
                       <button
                         type="button"
-                        className={activeView === subItem.id ? 'active-sub' : ''}
+                        className={activeView === subItem.id || (activeView === 'training' && subItem.id === 'myTraining') ? 'active-sub' : ''}
                         key={subItem.id}
                         onClick={() => setActiveView(subItem.id)}
                       >
@@ -1078,7 +1326,9 @@ function App() {
         </section>
       )}
 
-      {activeModule && activeView !== 'desk' && (
+      {isTrainingView && renderTrainingContent()}
+
+      {activeModule && activeView !== 'desk' && !isTrainingView && (
         <section className="pilot-module-page">
           <section className="pilot-module-hero">
             <div className="pilot-module-icon">
