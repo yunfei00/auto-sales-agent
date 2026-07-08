@@ -11,14 +11,14 @@ This document records the target deployment environment for the automotive sales
 | SSH auth | Passwordless login is already configured |
 | Deploy root | `/mnt/data/cloud_flying` |
 | Docker package root | `/mnt/data/cloud_flying/package/auto_sales_agent` |
-| External URL | `http://111.228.9.40:58900/` |
+| External URL | `http://111.228.9.40:58900/car` |
 | Admin URL | `http://111.228.9.40:58900/admin/` |
 | External port | `58900` |
 | Gateway listen port | `7860` |
 | App host port on this server | `7861` |
 | Container app port | `7860` |
 
-The server maps external port `58900` to a gateway listening on `127.0.0.1:7860`. That gateway forwards the root application to `127.0.0.1:7861`, so this deployment should publish the Django container as `127.0.0.1:7861 -> 7860`.
+The server maps external port `58900` to a gateway listening on `127.0.0.1:7860`. That gateway forwards the Django application to `127.0.0.1:7861`, and the product frontend is served from `/car`, so this deployment should publish the Django container as `127.0.0.1:7861 -> 7860`.
 
 ## Sensitive Access Notes
 
@@ -79,7 +79,7 @@ The current deployable shape is a single Django container:
 6. Upload or build on `pnxc@111.228.9.40 -p 27788`.
 7. Deploy under `/mnt/data/cloud_flying`.
 8. Run Django migrations and collect static assets if using Django.
-9. Verify `http://111.228.9.40:58900/`.
+9. Verify `http://111.228.9.40:58900/car`.
 10. Verify admin access at `http://111.228.9.40:58900/admin/`.
 11. Verify health check at `http://111.228.9.40:58900/api/health/`.
 

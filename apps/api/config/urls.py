@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.conf import settings
 from django.http import FileResponse
+from django.shortcuts import redirect
 from django.urls import include, path
 
 
@@ -15,8 +16,15 @@ def frontend_app(_request):
         return FileResponse(index_path.open("rb"), content_type="text/html")
     return JsonResponse({"status": "ok", "service": "auto-sales-agent-api", "frontend": "not_built"})
 
+
+def frontend_entry(_request):
+    return redirect("/car")
+
+
 urlpatterns = [
-    path("", frontend_app, name="frontend-app"),
+    path("", frontend_entry, name="frontend-entry"),
+    path("car", frontend_app, name="frontend-app"),
+    path("car/", frontend_app, name="frontend-app-slash"),
     path("api/health/", health_check, name="health-check"),
     path('admin/', admin.site.urls),
     path("api/accounts/", include("apps.accounts.urls")),

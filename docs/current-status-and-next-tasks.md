@@ -9,7 +9,7 @@
 | 主分支 | `main` |
 | 当前最新提交 | `0f67931 fix(leads): normalize csv import headers` |
 | 当前线上版本 | `git-0f67931` |
-| 线上地址 | `http://111.228.9.40:58900/` |
+| 线上地址 | `http://111.228.9.40:58900/car` |
 | 后台地址 | `http://111.228.9.40:58900/admin/` |
 | 部署目录 | `/mnt/data/cloud_flying/auto-sales-agent` |
 | 部署包目录 | `/mnt/data/cloud_flying/package/auto_sales_agent/git-0f67931` |
