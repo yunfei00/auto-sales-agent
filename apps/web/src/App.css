@@ -2873,11 +2873,6 @@ h2 {
 }
 
 @media (max-width: 420px) {
-  .pilot-nav,
-  .sidebar-subnav {
-    grid-template-columns: 1fr;
-  }
-
   .topbar {
     align-items: flex-start;
   }
