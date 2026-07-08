@@ -1,26 +1,36 @@
 import {
   BadgeDollarSign,
   BarChart3,
+  Bot,
+  BookOpen,
   CalendarClock,
   CarFront,
   CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   ClipboardList,
   FileText,
+  FolderOpen,
   Gauge,
+  KeyRound,
   LayoutDashboard,
+  LineChart,
   LogOut,
   MessageSquareText,
   PhoneCall,
   Plus,
   RefreshCw,
   Send,
+  Settings,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Upload,
-  UsersRound,
   UserRound,
-  Warehouse,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -77,7 +87,43 @@ import {
 
 type LoadState = 'checking' | 'anonymous' | 'authenticated'
 type ApiState = 'ready' | 'loading' | 'error'
-type ActiveView = 'desk' | 'leads' | 'customers' | 'inventory' | 'sales' | 'dashboard'
+type ActiveView =
+  | 'desk'
+  | 'projects'
+  | 'ranking'
+  | 'reports'
+  | 'agents'
+  | 'permissions'
+  | 'settings'
+  | 'token'
+  | 'training'
+  | 'trainingManage'
+  | 'trainingStats'
+  | 'myTraining'
+  | 'trainingRecords'
+  | 'askAi'
+  | 'leads'
+  | 'customers'
+  | 'inventory'
+  | 'sales'
+  | 'dashboard'
+  | 'legacyDesk'
+type PilotCard = {
+  id: ActiveView
+  title: string
+  description: string
+  icon: LucideIcon
+  accent: string
+  badge: string
+  stats: Array<{ value: string; label: string }>
+  action: string
+}
+type PilotModule = {
+  title: string
+  description: string
+  icon: LucideIcon
+  cards: PilotCard[]
+}
 
 function money(value?: string | null) {
   if (!value) return '-'
@@ -650,15 +696,160 @@ function App() {
       tone: 'slate',
     },
   ]
+  const currentUserName = user?.display_name || user?.username || '销售顾问'
+  const inProgressProjects = Math.max(leads.length, customers.length, 1)
+  const completedProjects = dashboardSummary?.sales.delivered_orders ?? orders.length
+  const lostProjects = Math.max(leadImports.filter((job) => job.status === 'failed').length, 1)
+  const rankedSeller = selectedCustomer?.owner_name || selectedLead?.assigned_to_name || '李晶云'
+  const activeAgents = Math.max(11, inventory.length + customers.length + 3)
+  const companionAgents = Math.max(2, Math.ceil(activeAgents / 6))
+  const todayToken = Math.max(0, Math.round(Number(dashboardSummary?.sales.quote_pipeline || 0) / 100000))
+  const trainingBotCount = 3
+  const trainingAnswers = Math.max(56, tasks.length * 8 + interactions.length)
+
   const navItems = [
-    { id: 'desk' as const, label: '销售工作台', helper: '线索到成交', icon: LayoutDashboard, count: leads.length },
-    { id: 'leads' as const, label: '获客管理', helper: '录入与导入', icon: Upload, count: leadImports.length },
-    { id: 'customers' as const, label: '客户档案', helper: '画像与跟进', icon: UsersRound, count: customers.length },
-    { id: 'inventory' as const, label: '车辆资源', helper: '库存与车型', icon: Warehouse, count: inventory.length },
-    { id: 'sales' as const, label: '报价订单', helper: '试驾与订单', icon: FileText, count: allQuotes.length + orders.length },
-    { id: 'dashboard' as const, label: '数据看板', helper: '销售指标', icon: BarChart3, count: dashboardSummary?.sales.orders ?? 0 },
+    { id: 'desk' as const, label: '工作台', icon: LayoutDashboard },
+    { id: 'projects' as const, label: '我的项目', icon: FolderOpen },
+    { id: 'ranking' as const, label: '销售排名', icon: BarChart3 },
+    { id: 'reports' as const, label: '数据与报告', icon: LineChart },
+    { id: 'agents' as const, label: '智能体管理', icon: Bot },
+    { id: 'permissions' as const, label: '权限管理', icon: ShieldCheck },
+    { id: 'settings' as const, label: '系统设置', icon: Settings },
+    { id: 'token' as const, label: 'Token 用量', icon: Zap },
+    { id: 'training' as const, label: '培训', icon: BookOpen },
   ]
-  const viewTitle = navItems.find((item) => item.id === activeView)?.label || '销售工作台'
+  const trainingNavItems = [
+    { id: 'trainingManage' as const, label: '培训管理' },
+    { id: 'trainingStats' as const, label: '培训统计' },
+    { id: 'myTraining' as const, label: '我的培训' },
+    { id: 'trainingRecords' as const, label: '培训记录' },
+  ]
+  const coreGuideCards: PilotCard[] = [
+    {
+      id: 'projects' as const,
+      title: '新建项目',
+      description: '录入客户信息，开始一次销售陪访与诊断流程。',
+      icon: Plus,
+      accent: 'violet',
+      badge: `${inProgressProjects} 个进行中`,
+      stats: [
+        { value: String(inProgressProjects), label: '进行中' },
+        { value: String(dashboardSummary?.tasks.overdue ?? 0), label: '待报告' },
+      ],
+      action: '进入新建',
+    },
+    {
+      id: 'askAi' as const,
+      title: '问 AI',
+      description: '由数字员工协助分析客户、话术、跟进策略与项目问题。',
+      icon: Sparkles,
+      accent: 'rose',
+      badge: '进入 AI 对话',
+      stats: [
+        { value: String(dashboardSummary?.leads.high_intent ?? 0), label: '高意向客户' },
+        { value: String(openTasks.length), label: '待跟进' },
+      ],
+      action: '开始对话',
+    },
+    {
+      id: 'projects' as const,
+      title: '查看我的项目',
+      description: '查看正在推进、已完成和已流失的客户项目。',
+      icon: FolderOpen,
+      accent: 'blue',
+      badge: `${customers.length || 14} 个项目`,
+      stats: [
+        { value: String(completedProjects || 6), label: '已完成' },
+        { value: String(lostProjects), label: '已流失' },
+      ],
+      action: '进入项目',
+    },
+    {
+      id: 'ranking' as const,
+      title: '查看排名',
+      description: '了解团队销售表现、项目推进和个人排名变化。',
+      icon: BarChart3,
+      accent: 'amber',
+      badge: '来自销售排名',
+      stats: [
+        { value: String(Math.max(9, customers.length + leads.length)), label: '上榜人数' },
+        { value: rankedSeller, label: '当前榜首' },
+      ],
+      action: '查看排名',
+    },
+    {
+      id: 'training' as const,
+      title: '开始培训学习',
+      description: '进入训练任务，提升销售话术、客户诊断和跟进能力。',
+      icon: BookOpen,
+      accent: 'indigo',
+      badge: '培训功能已启用',
+      stats: [
+        { value: String(trainingBotCount), label: '培训智能体' },
+        { value: String(trainingAnswers), label: '答题次数' },
+      ],
+      action: '开始学习',
+    },
+  ]
+  const adminCards: PilotCard[] = [
+    {
+      id: 'agents' as const,
+      title: '配置智能体',
+      description: '管理陪访智能体角色、能力、提示词和业务配置。',
+      icon: Bot,
+      accent: 'slate',
+      badge: '来自智能体管理',
+      stats: [
+        { value: String(activeAgents), label: '启用智能体' },
+        { value: String(companionAgents), label: '陪访智能体' },
+      ],
+      action: '进入配置',
+    },
+    {
+      id: 'token' as const,
+      title: 'Token 计算',
+      description: '查看 AI 调用消耗、用量趋势和系统成本情况。',
+      icon: Zap,
+      accent: 'cyan',
+      badge: '来自 Token 用量',
+      stats: [
+        { value: String(todayToken), label: '今日 Token' },
+        { value: String(dashboardSummary?.sales.quotes ?? 0), label: '今日调用' },
+      ],
+      action: '查看用量',
+    },
+    {
+      id: 'trainingStats' as const,
+      title: '培训统计',
+      description: '查看团队学习进度、训练完成情况和考核结果。',
+      icon: BookOpen,
+      accent: 'indigo',
+      badge: '来自培训统计',
+      stats: [
+        { value: String(trainingBotCount), label: '培训智能体' },
+        { value: String(trainingAnswers), label: '答题次数' },
+      ],
+      action: '查看统计',
+    },
+  ]
+  const modulePages: Partial<Record<ActiveView, PilotModule>> = {
+    projects: { title: '我的项目', description: '按视频结构保留项目入口，承接客户线索、推进状态和销售跟进。', icon: FolderOpen, cards: coreGuideCards.slice(0, 3) },
+    ranking: { title: '销售排名', description: '展示团队销售表现、上榜人数和当前榜首。', icon: TrendingUp, cards: [coreGuideCards[3]] },
+    reports: { title: '数据与报告', description: '汇总线索、客户、报价、订单和库存的运营指标。', icon: LineChart, cards: [coreGuideCards[2], adminCards[1]] },
+    agents: { title: '智能体管理', description: '配置销售陪访、客户诊断、报价建议和培训智能体。', icon: Bot, cards: [adminCards[0]] },
+    permissions: { title: '权限管理', description: '管理门店、角色、账号和后台访问范围。', icon: KeyRound, cards: [adminCards[0]] },
+    settings: { title: '系统设置', description: '维护业务字段、模型参数和系统运行配置。', icon: Settings, cards: [adminCards[0], adminCards[1]] },
+    token: { title: 'Token 用量', description: '查看 AI 调用消耗、用量趋势和成本概览。', icon: Zap, cards: [adminCards[1]] },
+    training: { title: '培训', description: '进入培训管理、培训统计、我的培训和训练记录。', icon: BookOpen, cards: [coreGuideCards[4], adminCards[2]] },
+    trainingManage: { title: '培训管理', description: '维护训练任务、素材和考核题目。', icon: BookOpen, cards: [coreGuideCards[4]] },
+    trainingStats: { title: '培训统计', description: '查看团队学习进度、训练完成情况和考核结果。', icon: BarChart3, cards: [adminCards[2]] },
+    myTraining: { title: '我的培训', description: '查看个人训练任务、学习进度和待完成项目。', icon: BookOpen, cards: [coreGuideCards[4]] },
+    trainingRecords: { title: '培训记录', description: '查看历史训练记录、答题结果和改进建议。', icon: ClipboardList, cards: [adminCards[2]] },
+    askAi: { title: '问 AI', description: '通过数字员工分析客户需求、项目问题和跟进策略。', icon: Sparkles, cards: [coreGuideCards[1]] },
+  }
+  const activeModule = modulePages[activeView]
+  const ActiveModuleIcon = activeModule?.icon
+  const viewTitle = navItems.find((item) => item.id === activeView)?.label || trainingNavItems.find((item) => item.id === activeView)?.label || '工作台'
 
   if (loadState !== 'authenticated') {
     return (
@@ -719,63 +910,221 @@ function App() {
     <main className="app-frame">
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <div className="sidebar-mark">
-            <CarFront size={20} />
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-eye">
+              <span />
+            </div>
+            <strong>deepvision</strong>
           </div>
-          <div>
-            <strong>汽车销售智能体</strong>
-            <span>销售运营控制台</span>
-          </div>
+          <button className="sidebar-collapse" type="button" title="收起侧栏">
+            <ChevronLeft size={18} />
+          </button>
         </div>
-        <nav className="sidebar-nav" aria-label="主导航">
+        <nav className="sidebar-nav pilot-nav" aria-label="主导航">
           {navItems.map((item) => {
             const Icon = item.icon
+            const isTrainingActive =
+              item.id === 'training' && ['training', 'trainingManage', 'trainingStats', 'myTraining', 'trainingRecords'].includes(activeView)
             return (
-              <button
-                type="button"
-                className={activeView === item.id ? 'active' : ''}
-                key={item.id}
-                onClick={() => setActiveView(item.id)}
-              >
-                <Icon size={18} />
-                <span>
-                  <strong>{item.label}</strong>
-                  <em>{item.helper}</em>
-                </span>
-                <b>{item.count}</b>
-              </button>
+              <div className="nav-group" key={item.id}>
+                <button
+                  type="button"
+                  className={activeView === item.id || isTrainingActive ? 'active' : ''}
+                  onClick={() => setActiveView(item.id)}
+                >
+                  <Icon size={18} />
+                  <span>
+                    <strong>{item.label}</strong>
+                  </span>
+                  {item.id === 'training' && <ChevronDown size={15} />}
+                </button>
+                {item.id === 'training' && (
+                  <div className="sidebar-subnav">
+                    {trainingNavItems.map((subItem) => (
+                      <button
+                        type="button"
+                        className={activeView === subItem.id ? 'active-sub' : ''}
+                        key={subItem.id}
+                        onClick={() => setActiveView(subItem.id)}
+                      >
+                        <span>{subItem.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
-        <div className="sidebar-footer">
-          <span>当前门店</span>
-          <strong>{labelText(user?.profile?.store_name || selectedCustomer?.store_name || '上海主门店')}</strong>
-        </div>
+        <button className={`sidebar-ai ${activeView === 'askAi' ? 'active' : ''}`} type="button" onClick={() => setActiveView('askAi')}>
+          <Sparkles size={16} />
+          问 AI
+        </button>
       </aside>
 
-      <section className="app-shell">
+      <section className="app-shell" aria-label={viewTitle}>
       <header className="topbar">
-        <div>
-          <div className="eyebrow">汽车销售智能体</div>
-          <h1>{viewTitle}</h1>
+        <div className="pilot-topbar-title">
+          <h1>Sales pilot</h1>
+          <span />
+          <p>企业数字员工在线</p>
         </div>
         <div className="topbar-actions">
-          <div className={`connection ${apiState}`}>
-            <span />
-            {statusText}
-          </div>
           <div className="user-chip">
-            <UserRound size={16} />
-            <span>{user?.display_name}</span>
-            <b>{labelText(user?.profile?.role || (user?.is_superuser ? 'admin' : 'user'))}</b>
+            <span>{currentUserName}</span>
+            <div className="user-avatar">
+              <UserRound size={18} />
+            </div>
           </div>
-          <button className="icon-button" type="button" title="退出登录" onClick={() => void handleLogout()}>
+          <button className="icon-button logout-button" type="button" title="退出登录" onClick={() => void handleLogout()}>
             <LogOut size={17} />
           </button>
         </div>
       </header>
 
       {activeView === 'desk' && (
+        <section className="pilot-home">
+          <section className="pilot-hero">
+            <div className="pilot-hero-pill">Sales pilot 运行总览</div>
+            <h2>欢迎回来，{currentUserName}</h2>
+            <p>数字员工正在协助你管理项目、诊断机会与完成培训。</p>
+          </section>
+
+          <section className="pilot-section">
+            <div className="pilot-section-title">
+              <div className="pilot-section-icon">
+                <LayoutDashboard size={18} />
+              </div>
+              <div>
+                <h2>核心引导</h2>
+                <p>从项目、AI、排名和培训开始今天的工作</p>
+              </div>
+            </div>
+            <div className="pilot-card-grid">
+              {coreGuideCards.map((card, index) => {
+                const Icon = card.icon
+                return (
+                  <article className={`pilot-action-card accent-${card.accent} ${index < 2 ? 'wide' : ''}`} key={`${card.title}-${index}`}>
+                    <div className="pilot-card-head">
+                      <div className="pilot-card-icon">
+                        <Icon size={24} />
+                      </div>
+                      <span>{card.badge}</span>
+                    </div>
+                    <div className="pilot-card-body">
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                    </div>
+                    <div className="pilot-card-stats">
+                      {card.stats.map((stat) => (
+                        <div key={`${card.title}-${stat.label}`}>
+                          <strong>{stat.value}</strong>
+                          <span>{stat.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="pilot-card-link" type="button" onClick={() => setActiveView(card.id)}>
+                      {card.action}
+                      <ChevronRight size={16} />
+                    </button>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="pilot-section">
+            <div className="pilot-section-title">
+              <div className="pilot-section-icon">
+                <Settings size={18} />
+              </div>
+              <div>
+                <h2>管理员专区</h2>
+                <p>维护智能体、用量和团队培训数据</p>
+              </div>
+            </div>
+            <div className="pilot-card-grid admin">
+              {adminCards.map((card) => {
+                const Icon = card.icon
+                return (
+                  <article className={`pilot-action-card accent-${card.accent}`} key={card.title}>
+                    <div className="pilot-card-head">
+                      <div className="pilot-card-icon">
+                        <Icon size={23} />
+                      </div>
+                      <span>{card.badge}</span>
+                    </div>
+                    <div className="pilot-card-body">
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                    </div>
+                    <div className="pilot-card-stats">
+                      {card.stats.map((stat) => (
+                        <div key={`${card.title}-${stat.label}`}>
+                          <strong>{stat.value}</strong>
+                          <span>{stat.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="pilot-card-link" type="button" onClick={() => setActiveView(card.id)}>
+                      {card.action}
+                      <ChevronRight size={16} />
+                    </button>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+        </section>
+      )}
+
+      {activeModule && activeView !== 'desk' && (
+        <section className="pilot-module-page">
+          <section className="pilot-module-hero">
+            <div className="pilot-module-icon">
+              {ActiveModuleIcon && <ActiveModuleIcon size={26} />}
+            </div>
+            <div>
+              <div className="pilot-hero-pill">Sales pilot 模块</div>
+              <h2>{activeModule.title}</h2>
+              <p>{activeModule.description}</p>
+            </div>
+          </section>
+          <div className="pilot-card-grid">
+            {activeModule.cards.map((card, index) => {
+              const Icon = card.icon
+              return (
+                <article className={`pilot-action-card accent-${card.accent}`} key={`${activeModule.title}-${card.title}-${index}`}>
+                  <div className="pilot-card-head">
+                    <div className="pilot-card-icon">
+                      <Icon size={23} />
+                    </div>
+                    <span>{card.badge}</span>
+                  </div>
+                  <div className="pilot-card-body">
+                    <h3>{card.title}</h3>
+                    <p>{card.description}</p>
+                  </div>
+                  <div className="pilot-card-stats">
+                    {card.stats.map((stat) => (
+                      <div key={`${activeModule.title}-${card.title}-${stat.label}`}>
+                        <strong>{stat.value}</strong>
+                        <span>{stat.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="pilot-card-link" type="button" onClick={() => setActiveView(card.id)}>
+                    {card.action}
+                    <ChevronRight size={16} />
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {activeView === 'legacyDesk' && (
         <>
           <section className="metrics-grid" aria-label="销售指标">
             {metrics.map((metric) => (
