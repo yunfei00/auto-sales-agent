@@ -926,7 +926,7 @@ function App() {
             const isTrainingActive =
               item.id === 'training' && ['training', 'trainingManage', 'trainingStats', 'myTraining', 'trainingRecords'].includes(activeView)
             return (
-              <div className="nav-group" key={item.id}>
+              <div className={`nav-group ${item.id === 'training' ? 'training-group' : ''}`} key={item.id}>
                 <button
                   type="button"
                   className={activeView === item.id || isTrainingActive ? 'active' : ''}
