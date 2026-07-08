@@ -1988,6 +1988,11 @@ h2 {
 .app-frame {
   grid-template-columns: 220px minmax(0, 1fr);
   background: linear-gradient(135deg, #f2eaff 0%, #eef4ff 52%, #f8fbff 100%);
+  transition: grid-template-columns 0.22s ease;
+}
+
+.app-frame.sidebar-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .app-shell {
@@ -1999,11 +2004,13 @@ h2 {
   height: 100vh;
   margin: 0;
   padding: 16px 14px 14px;
+  gap: 8px;
   border: 0;
   border-right: 1px solid rgba(124, 58, 237, 0.1);
   border-radius: 0;
   background: linear-gradient(180deg, #eadcff 0%, #f6efff 100%);
   box-shadow: 12px 0 38px rgba(124, 58, 237, 0.12);
+  transition: padding 0.22s ease;
 }
 
 .sidebar-brand {
@@ -2065,6 +2072,8 @@ h2 {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.56);
   color: #5b21b6;
+  transition: transform 0.18s ease, background 0.18s ease;
+  z-index: 2;
 }
 
 .pilot-nav {
@@ -2087,6 +2096,7 @@ h2 {
   color: #4c3f72;
   font-size: 14px;
   font-weight: 700;
+  min-width: 0;
 }
 
 .pilot-nav button span {
@@ -2111,6 +2121,15 @@ h2 {
 .pilot-nav button.active svg,
 .sidebar-ai.active svg {
   color: #ffffff;
+}
+
+.training-chevron {
+  justify-self: end;
+  transition: transform 0.18s ease;
+}
+
+.training-group > button[aria-expanded="false"] .training-chevron {
+  transform: rotate(-90deg);
 }
 
 .sidebar-subnav {
@@ -2164,9 +2183,74 @@ h2 {
 .sidebar-ai {
   display: grid;
   align-items: center;
+  flex: 0 0 auto;
   width: 100%;
-  margin-top: 4px;
+  min-height: 38px;
+  margin-top: auto;
+  overflow: visible;
   text-align: left;
+}
+
+.sidebar-ai span {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.app-frame.sidebar-collapsed .app-sidebar {
+  padding: 16px 10px 14px;
+}
+
+.app-frame.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+}
+
+.app-frame.sidebar-collapsed .sidebar-logo {
+  justify-items: center;
+}
+
+.app-frame.sidebar-collapsed .sidebar-logo strong,
+.app-frame.sidebar-collapsed .pilot-nav button span,
+.app-frame.sidebar-collapsed .training-chevron,
+.app-frame.sidebar-collapsed .sidebar-subnav,
+.app-frame.sidebar-collapsed .sidebar-ai span {
+  display: none;
+}
+
+.app-frame.sidebar-collapsed .sidebar-logo-eye {
+  width: 34px;
+  height: 22px;
+}
+
+.app-frame.sidebar-collapsed .sidebar-logo-eye::before,
+.app-frame.sidebar-collapsed .sidebar-logo-eye::after {
+  inset: 3px 6px;
+  border-width: 2px;
+}
+
+.app-frame.sidebar-collapsed .sidebar-logo-eye span {
+  display: block;
+  width: 11px;
+  height: 11px;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+.app-frame.sidebar-collapsed .sidebar-collapse {
+  right: -2px;
+}
+
+.app-frame.sidebar-collapsed .pilot-nav button,
+.app-frame.sidebar-collapsed .sidebar-ai {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 8px;
+  text-align: center;
+}
+
+.app-frame.sidebar-collapsed .sidebar-ai {
+  font-size: 0;
 }
 
 .topbar {

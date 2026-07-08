@@ -281,6 +281,8 @@ function App() {
   const [captchaImage, setCaptchaImage] = useState('')
   const [loginError, setLoginError] = useState('')
   const [activeView, setActiveView] = useState<ActiveView>('desk')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [trainingExpanded, setTrainingExpanded] = useState(true)
 
   const [leads, setLeads] = useState<Lead[]>([])
   const [leadImports, setLeadImports] = useState<LeadImportJob[]>([])
@@ -1155,7 +1157,7 @@ function App() {
   }
 
   return (
-    <main className="app-frame">
+    <main className={`app-frame ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className="app-sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-logo">
@@ -1164,8 +1166,15 @@ function App() {
             </div>
             <strong>deepvision</strong>
           </div>
-          <button className="sidebar-collapse" type="button" title="收起侧栏">
-            <ChevronLeft size={18} />
+          <button
+            className="sidebar-collapse"
+            type="button"
+            title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+            aria-label={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+            aria-pressed={sidebarCollapsed}
+            onClick={() => setSidebarCollapsed((value) => !value)}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
         <nav className="sidebar-nav pilot-nav" aria-label="主导航">
@@ -1178,15 +1187,24 @@ function App() {
                 <button
                   type="button"
                   className={activeView === item.id || isTrainingActive ? 'active' : ''}
-                  onClick={() => setActiveView(item.id === 'training' ? 'myTraining' : item.id)}
+                  aria-expanded={item.id === 'training' ? trainingExpanded : undefined}
+                  title={item.label}
+                  onClick={() => {
+                    if (item.id === 'training') {
+                      setTrainingExpanded((value) => !value)
+                      if (!isTrainingActive) setActiveView('myTraining')
+                      return
+                    }
+                    setActiveView(item.id)
+                  }}
                 >
                   <Icon size={18} />
                   <span>
                     <strong>{item.label}</strong>
                   </span>
-                  {item.id === 'training' && <ChevronDown size={15} />}
+                  {item.id === 'training' && <ChevronDown className="training-chevron" size={15} />}
                 </button>
-                {item.id === 'training' && (
+                {item.id === 'training' && trainingExpanded && (
                   <div className="sidebar-subnav">
                     {trainingNavItems.map((subItem) => (
                       <button
@@ -1204,9 +1222,9 @@ function App() {
             )
           })}
         </nav>
-        <button className={`sidebar-ai ${activeView === 'askAi' ? 'active' : ''}`} type="button" onClick={() => setActiveView('askAi')}>
+        <button className={`sidebar-ai ${activeView === 'askAi' ? 'active' : ''}`} type="button" title="问 AI" onClick={() => setActiveView('askAi')}>
           <Sparkles size={16} />
-          问 AI
+          <span>问 AI</span>
         </button>
       </aside>
 
