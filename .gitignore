@@ -1,5 +1,6 @@
 .codex/
 .codex/*.local.md
+.codex-remote-attachments/
 
 # Local reference materials
 refer_to/
