@@ -6,6 +6,7 @@ AI agent product for automotive sales teams, helping sales consultants analyze l
 - [Automotive sales agent product plan](docs/automotive-sales-agent-product-plan.md)
 - [Automotive sales agent technical solution](docs/automotive-sales-agent-technical-solution.md)
 - [System architecture](docs/system-architecture.md)
+- [Customer level scoring rules](docs/customer-level-scoring-rules.md)
 - [Current status and next tasks](docs/current-status-and-next-tasks.md)
 - [Deployment environment](docs/deployment-environment.md)
 - [Security mechanisms](docs/security-mechanisms.md)
