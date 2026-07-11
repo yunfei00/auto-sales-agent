@@ -5,14 +5,14 @@ from .models import Order, Quote, TestDrive
 
 @admin.register(TestDrive)
 class TestDriveAdmin(admin.ModelAdmin):
-    list_display = ("customer", "inventory", "consultant", "scheduled_at", "status")
+    list_display = ("customer", "inventory", "consultant", "scheduled_at", "completed_at", "status")
     search_fields = ("customer__name", "inventory__vin", "feedback")
     list_filter = ("status",)
 
 
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer", "inventory", "consultant", "status", "landing_price", "created_at")
+    list_display = ("id", "customer", "inventory", "consultant", "status", "landing_price", "sent_at", "created_at")
     search_fields = ("customer__name", "inventory__vin", "notes")
     list_filter = ("status",)
 
