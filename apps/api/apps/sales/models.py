@@ -16,6 +16,7 @@ class TestDrive(TimeStampedModel):
     inventory = models.ForeignKey("vehicles.VehicleInventory", on_delete=models.SET_NULL, null=True, blank=True)
     consultant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     scheduled_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     feedback = models.TextField(blank=True)
 
@@ -39,6 +40,7 @@ class Quote(TimeStampedModel):
     inventory = models.ForeignKey("vehicles.VehicleInventory", on_delete=models.SET_NULL, null=True, blank=True)
     consultant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.DRAFT)
+    sent_at = models.DateTimeField(null=True, blank=True)
     bare_vehicle_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
