@@ -316,7 +316,7 @@ function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
 
-async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = init.method || 'GET'
   const headers = new Headers(init.headers)
   const csrfToken = getCookie('csrftoken') || sessionCsrfToken

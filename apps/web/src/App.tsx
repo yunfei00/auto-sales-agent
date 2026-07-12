@@ -36,6 +36,7 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import showroomImg from './assets/showroom.svg'
+import UserManagementPage from './pages/UserManagementPage'
 import {
   type CurrentUser,
   type Customer,
@@ -94,6 +95,7 @@ type ActiveView =
   | 'reports'
   | 'agents'
   | 'permissions'
+  | 'users'
   | 'settings'
   | 'token'
   | 'training'
@@ -1500,6 +1502,7 @@ function App() {
     { id: 'reports' as const, label: '数据与报告', icon: LineChart },
     { id: 'agents' as const, label: '智能体管理', icon: Bot },
     { id: 'permissions' as const, label: '权限管理', icon: ShieldCheck },
+    { id: 'users' as const, label: '用户管理', icon: UserRound },
     { id: 'settings' as const, label: '系统设置', icon: Settings },
     { id: 'token' as const, label: 'Token 用量', icon: Zap },
     { id: 'training' as const, label: '培训', icon: BookOpen },
@@ -2748,6 +2751,7 @@ function App() {
     if (activeView === 'reports') return renderReportsPage()
     if (activeView === 'agents') return renderAgentsPage()
     if (activeView === 'permissions') return renderPermissionsPage()
+    if (activeView === 'users') return <UserManagementPage />
     if (activeView === 'settings') return renderSettingsPage()
     if (activeView === 'token') return renderTokenPage()
     if (activeView === 'askAi') return renderAskAiPage()
@@ -2966,7 +2970,7 @@ function App() {
       </div>
     )
 
-  const isManagementView = ['projects', 'ranking', 'reports', 'agents', 'permissions', 'settings', 'token', 'askAi'].includes(activeView)
+  const isManagementView = ['projects', 'ranking', 'reports', 'agents', 'permissions', 'users', 'settings', 'token', 'askAi'].includes(activeView)
 
   if (loadState !== 'authenticated') {
     return (
